@@ -173,7 +173,7 @@ function App() {
     <div className="min-h-screen bg-slate-900 text-white">
       <Sidebar
         appName="GRID"
-        tagline="Geographic Revenue Insights"
+        tagline="Geographic Revenue Insights Dashboard"
         logoSrc="/logo.png"
         navigationItems={navigationItems}
         activeItem="heatmap"
