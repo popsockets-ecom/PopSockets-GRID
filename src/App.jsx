@@ -157,7 +157,7 @@ function App() {
     return (
       <LoginPage
         appName="GRID"
-        tagline="Geographic Revenue Insight Dashboard"
+        tagline="Geographic Revenue Insights Dashboard"
         logoSrc="/logo.png"
         onSubmit={handleLogin}
         error={authError}
