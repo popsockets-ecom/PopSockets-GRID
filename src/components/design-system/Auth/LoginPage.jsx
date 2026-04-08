@@ -27,7 +27,7 @@ export function LoginPage({
             {(logoSrc || logoComponent) && (
               <div className="flex justify-center mb-4">
                 {logoComponent ? logoComponent : (
-                  <img src={logoSrc} alt={`${appName} Logo`} className="h-20" />
+                  <img src={logoSrc} alt={`${appName} Logo`} className="h-28" />
                 )}
               </div>
             )}
