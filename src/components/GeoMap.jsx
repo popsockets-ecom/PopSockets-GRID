@@ -182,8 +182,11 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
 
             {/* City bubbles with real coordinates */}
             {drillLevel === 'state' && cityBubbles.map((city, i) => {
-              const r = bubbleScale(city.revenue);
+              const r = bubbleScale(city.revenue) / mapZoom;
               const isHov = hoveredCity?.city === city.city;
+              const isTop5 = i < 5;
+              const fontSize = (isHov ? 3.2 : 2.5) / mapZoom;
+              const strokeW = (isHov ? 0.8 : 0.3) / mapZoom;
               return (
                 <Marker key={`${city.city}-${i}`} coordinates={city.coords}>
                   <circle
@@ -191,22 +194,21 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
                     fill={isHov ? '#c4b5fd' : '#8b5cf6'}
                     fillOpacity={isHov ? 0.95 : 0.7}
                     stroke={isHov ? '#ffffff' : '#c4b5fd'}
-                    strokeWidth={isHov ? 1.5 : 0.5}
+                    strokeWidth={strokeW}
                     style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
                     onMouseEnter={() => setHoveredCity(city)}
                     onMouseLeave={() => setHoveredCity(null)}
                   />
-                  {(r > 4 || isHov) && (
+                  {(isTop5 || isHov) && (
                     <text
                       textAnchor="middle"
-                      y={-r - 3}
+                      y={-r - 1.5 / mapZoom}
                       style={{
-                        fontSize: isHov ? '7px' : '6px',
+                        fontSize: `${fontSize}px`,
                         fill: isHov ? '#ffffff' : '#c4b5fd',
                         fontFamily: 'system-ui, sans-serif',
                         fontWeight: isHov ? 700 : 500,
                         pointerEvents: 'none',
-                        textShadow: '0 1px 3px rgba(0,0,0,0.8)',
                       }}
                     >
                       {city.city}
