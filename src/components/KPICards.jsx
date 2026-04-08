@@ -4,21 +4,24 @@ import { fmtDollar, fmtNumber } from '../utils/formatters.js';
 import { STATE_ABBR_TO_NAME } from '../services/geoDataService.js';
 import { Spinner } from './design-system/Loading/Spinner.jsx';
 
+// Matches PATH's StatCard pattern exactly:
+// bg-slate-800, border-slate-700, colored glow line at top, colored label text
+const COLOR_SCHEMES = {
+  purple: { label: 'text-purple-400', glow: 'from-purple-500 to-purple-600' },
+  green:  { label: 'text-green-400',  glow: 'from-green-500 to-green-600' },
+  cyan:   { label: 'text-cyan-400',   glow: 'from-cyan-500 to-cyan-600' },
+  orange: { label: 'text-orange-400', glow: 'from-orange-500 to-orange-600' },
+};
+
 function KPICard({ label, value, icon: Icon, color, description, loading }) {
-  const colorMap = {
-    purple: { bg: 'from-purple-600/20 to-purple-600/5', border: 'border-purple-500/30', text: 'text-purple-400', glow: 'bg-gradient-to-r from-purple-500 to-purple-600' },
-    emerald: { bg: 'from-emerald-600/20 to-emerald-600/5', border: 'border-emerald-500/30', text: 'text-emerald-400', glow: 'bg-gradient-to-r from-emerald-500 to-emerald-600' },
-    blue: { bg: 'from-blue-600/20 to-blue-600/5', border: 'border-blue-500/30', text: 'text-blue-400', glow: 'bg-gradient-to-r from-blue-500 to-blue-600' },
-    amber: { bg: 'from-amber-600/20 to-amber-600/5', border: 'border-amber-500/30', text: 'text-amber-400', glow: 'bg-gradient-to-r from-amber-500 to-amber-600' },
-  };
-  const scheme = colorMap[color] || colorMap.purple;
+  const scheme = COLOR_SCHEMES[color] || COLOR_SCHEMES.purple;
 
   return (
-    <div className={`relative bg-gradient-to-br ${scheme.bg} rounded-xl border ${scheme.border} p-5 overflow-hidden`}>
-      <div className={`absolute top-0 left-0 right-0 h-[3px] ${scheme.glow}`} />
+    <div className="relative bg-slate-800 rounded-xl border border-slate-700 p-5 overflow-hidden">
+      <div className={`absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r ${scheme.glow}`} />
       <div className="flex items-start justify-between">
         <div className="flex-1">
-          <div className={`text-xs font-semibold uppercase tracking-wide ${scheme.text} mb-2`}>{label}</div>
+          <div className={`text-xs font-semibold uppercase tracking-wide ${scheme.label} mb-2`}>{label}</div>
           {loading ? (
             <div className="py-2"><Spinner size="sm" color="purple" /></div>
           ) : (
@@ -28,7 +31,7 @@ function KPICard({ label, value, icon: Icon, color, description, loading }) {
             </>
           )}
         </div>
-        <div className={`p-2 rounded-lg bg-slate-800/50 ${scheme.text}`}>
+        <div className={`p-2 rounded-lg bg-slate-700/50 ${scheme.label}`}>
           <Icon className="w-5 h-5" />
         </div>
       </div>
@@ -51,7 +54,7 @@ export function KPICards({ totals, topState, loading }) {
         label="Total Orders"
         value={fmtNumber(totals?.total_orders)}
         icon={ShoppingCart}
-        color="emerald"
+        color="green"
         description={`${fmtNumber(totals?.total_cities || 0)} cities`}
         loading={loading}
       />
@@ -59,14 +62,14 @@ export function KPICards({ totals, topState, loading }) {
         label="Avg Order Value"
         value={fmtDollar(totals?.avg_order_value)}
         icon={TrendingUp}
-        color="blue"
+        color="cyan"
         loading={loading}
       />
       <KPICard
         label="Top State"
         value={topState ? (STATE_ABBR_TO_NAME[topState.state] || topState.state) : '--'}
         icon={MapPin}
-        color="amber"
+        color="orange"
         description={topState ? fmtDollar(topState.revenue) : ''}
         loading={loading}
       />
