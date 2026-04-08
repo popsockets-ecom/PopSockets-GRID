@@ -223,9 +223,11 @@ function App() {
             <div className="xl:col-span-2">
               <GeoMap
                 stateData={stateData}
+                cityData={cityData}
                 onStateClick={handleStateClick}
                 selectedState={selectedState}
-                totals={totals}
+                onBack={handleBack}
+                drillLevel={drillLevel}
               />
             </div>
             <div className="xl:col-span-1">
