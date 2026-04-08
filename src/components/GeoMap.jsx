@@ -1,71 +1,40 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
-import { scaleLog, scaleLinear, scaleSqrt } from 'd3-scale';
+import { scaleLog, scaleSqrt } from 'd3-scale';
 import { fmtDollar, fmtNumber } from '../utils/formatters.js';
 import { FIPS_TO_ABBR, STATE_ABBR_TO_NAME } from '../services/geoDataService.js';
+import { getCityCoordinates } from '../data/cityCoords.js';
 
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
 
-// All steps are visible against the dark background
 // Inverted: light = low revenue, dark/saturated = high revenue
 const COLOR_RANGE = [
-  '#e0d5ff', // near-white violet (lowest)
-  '#c4b5fd', // violet-300
-  '#a78bfa', // violet-400
-  '#8b6cf5', // violet
-  '#7c5ce6', // bright purple
-  '#6d4fcc', // medium purple
-  '#5b45b2', // purple-indigo
-  '#4c3d99', // indigo
-  '#3b2580', // deep indigo (highest)
+  '#e0d5ff', '#c4b5fd', '#a78bfa', '#8b6cf5', '#7c5ce6',
+  '#6d4fcc', '#5b45b2', '#4c3d99', '#3b2580',
 ];
 
-// State centroid coordinates for city bubble positioning reference
+// State center coordinates for zoom targeting
 const STATE_CENTERS = {
-  AL:[32.8,-86.8],AK:[64,-153],AZ:[34.3,-111.7],AR:[34.8,-92.2],CA:[37.2,-119.5],
-  CO:[39,-105.5],CT:[41.6,-72.7],DE:[39,-75.5],FL:[28.6,-82.4],GA:[32.7,-83.5],
-  HI:[20.5,-157],ID:[44.4,-114.6],IL:[40,-89.2],IN:[39.8,-86.3],IA:[42,-93.5],
-  KS:[38.5,-98.3],KY:[37.8,-85.7],LA:[31,-92],ME:[45.4,-69],MD:[39.1,-76.8],
-  MA:[42.2,-71.8],MI:[44.3,-85],MN:[46.3,-94.3],MS:[32.7,-89.7],MO:[38.4,-92.5],
-  MT:[47,-109.6],NE:[41.5,-99.8],NV:[39.5,-116.9],NH:[43.7,-71.6],NJ:[40.1,-74.7],
-  NM:[34.5,-106],NY:[42.9,-75.5],NC:[35.6,-79.4],ND:[47.4,-100.5],OH:[40.3,-82.8],
-  OK:[35.6,-97.5],OR:[44,-120.5],PA:[40.9,-77.8],RI:[41.7,-71.5],SC:[33.9,-80.9],
-  SD:[44.4,-100.2],TN:[35.9,-86.4],TX:[31.5,-99.4],UT:[39.3,-111.7],VT:[44,-72.7],
-  VA:[37.5,-78.9],WA:[47.4,-120.5],WV:[38.6,-80.6],WI:[44.6,-89.8],WY:[43,-107.5],
-  DC:[38.9,-77],
+  AL:[-86.8,32.8],AK:[-153,64],AZ:[-111.7,34.3],AR:[-92.2,34.8],CA:[-119.5,37.2],
+  CO:[-105.5,39],CT:[-72.7,41.6],DE:[-75.5,39],FL:[-82.4,28.6],GA:[-83.5,32.7],
+  HI:[-157,20.5],ID:[-114.6,44.4],IL:[-89.2,40],IN:[-86.3,39.8],IA:[-93.5,42],
+  KS:[-98.3,38.5],KY:[-85.7,37.8],LA:[-92,31],ME:[-69,45.4],MD:[-76.8,39.1],
+  MA:[-71.8,42.2],MI:[-85,44.3],MN:[-94.3,46.3],MS:[-89.7,32.7],MO:[-92.5,38.4],
+  MT:[-109.6,47],NE:[-99.8,41.5],NV:[-116.9,39.5],NH:[-71.6,43.7],NJ:[-74.7,40.1],
+  NM:[-106,34.5],NY:[-75.5,42.9],NC:[-79.4,35.6],ND:[-100.5,47.4],OH:[-82.8,40.3],
+  OK:[-97.5,35.6],OR:[-120.5,44],PA:[-77.8,40.9],RI:[-71.5,41.7],SC:[-80.9,33.9],
+  SD:[-100.2,44.4],TN:[-86.4,35.9],TX:[-99.4,31.5],UT:[-111.7,39.3],VT:[-72.7,44],
+  VA:[-78.9,37.5],WA:[-120.5,47.4],WV:[-80.6,38.6],WI:[-89.8,44.6],WY:[-107.5,43],
+  DC:[-77,38.9],
 };
 
-// Zoom configs per state (center + zoom level)
-const STATE_ZOOM = {
-  AK: { center: [-153, 64], zoom: 3 },
-  HI: { center: [-157, 20.5], zoom: 6 },
-  TX: { center: [-99.4, 31.5], zoom: 5 },
-  CA: { center: [-119.5, 37.2], zoom: 5 },
-  MT: { center: [-109.6, 47], zoom: 6 },
-  FL: { center: [-82.4, 28.6], zoom: 6 },
-  NY: { center: [-75.5, 42.9], zoom: 7 },
-  default: { zoom: 6 },
-};
-
+// Zoom level per state (bigger states need less zoom)
 function getStateZoom(abbr) {
-  if (STATE_ZOOM[abbr]) return STATE_ZOOM[abbr];
-  const center = STATE_CENTERS[abbr];
-  if (!center) return { center: [-96, 38], zoom: 4 };
-  return { center: [center[1], center[0]], zoom: STATE_ZOOM.default.zoom };
-}
-
-// Approximate city lat/lng from state center + offset (for cities without geocoding)
-// In production you'd use a geocoding API; this gives reasonable visual spread
-function getCityCoords(city, stateAbbr, index, total) {
-  const center = STATE_CENTERS[stateAbbr];
-  if (!center) return null;
-  // Spread cities in a spiral pattern from state center
-  const angle = (index / total) * Math.PI * 4;
-  const radius = 0.3 + (index / total) * 1.5;
-  return [
-    center[1] + Math.cos(angle) * radius,
-    center[0] + Math.sin(angle) * radius * 0.7,
-  ];
+  const big = { AK:2.5, TX:4.5, CA:4.5, MT:5.5, NM:5.5, AZ:5.5, NV:5.5, CO:6, OR:5.5, WY:6.5 };
+  const small = { RI:14, DE:12, CT:10, NJ:9, NH:9, VT:9, MA:9, MD:9, HI:6, DC:16 };
+  const center = STATE_CENTERS[abbr] || [-96, 38];
+  const zoom = big[abbr] || small[abbr] || 6.5;
+  return { center, zoom };
 }
 
 export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedState, onBack, drillLevel }) {
@@ -75,7 +44,6 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
   const [mapCenter, setMapCenter] = useState([-96, 38]);
   const [mapZoom, setMapZoom] = useState(1);
 
-  // Animate zoom on state select/deselect
   useEffect(() => {
     if (drillLevel === 'state' && selectedState) {
       const { center, zoom } = getStateZoom(selectedState);
@@ -93,7 +61,6 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
     return map;
   }, [stateData]);
 
-  // Log scale so small states are still visible
   const colorScale = useMemo(() => {
     const revenues = stateData.map(d => d.revenue).filter(r => r > 0);
     if (revenues.length === 0) return () => COLOR_RANGE[0];
@@ -112,30 +79,38 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
     return COLOR_RANGE[Math.min(idx, COLOR_RANGE.length - 1)];
   }, [colorScale]);
 
-  // City bubble scale
+  // City bubbles: only cities with real coordinates
+  const cityBubbles = useMemo(() => {
+    if (!selectedState || cityData.length === 0) return [];
+    return cityData
+      .map(d => {
+        const coords = getCityCoordinates(d.city, selectedState);
+        return coords ? { ...d, coords } : null;
+      })
+      .filter(Boolean)
+      .slice(0, 40);
+  }, [cityData, selectedState]);
+
   const bubbleScale = useMemo(() => {
-    if (cityData.length === 0) return () => 3;
-    const maxRev = Math.max(...cityData.map(d => d.revenue));
-    return scaleSqrt().domain([0, maxRev]).range([2, 18]);
-  }, [cityData]);
+    if (cityBubbles.length === 0) return () => 3;
+    const maxRev = Math.max(...cityBubbles.map(d => d.revenue));
+    return scaleSqrt().domain([0, maxRev]).range([1.5, 14]);
+  }, [cityBubbles]);
 
   const handleMouseMove = useCallback((e) => {
     setTooltipPos({ x: e.clientX, y: e.clientY });
   }, []);
 
-  const maxRevenue = useMemo(() => {
-    return Math.max(...stateData.map(d => d.revenue), 1);
-  }, [stateData]);
+  const maxRevenue = useMemo(() => Math.max(...stateData.map(d => d.revenue), 1), [stateData]);
 
   const hoveredItem = hoveredCity || (hoveredState ? revenueByState[hoveredState] : null);
   const hoveredLabel = hoveredCity
-    ? hoveredCity.city
-    : (hoveredState ? (STATE_ABBR_TO_NAME[hoveredState] || hoveredState) : null);
+    ? `${hoveredCity.city}, ${selectedState}`
+    : hoveredState ? (STATE_ABBR_TO_NAME[hoveredState] || hoveredState) : null;
 
   return (
     <div className="relative" onMouseMove={handleMouseMove}>
       <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden backdrop-blur-sm">
-        {/* Back button overlay */}
         {drillLevel === 'state' && selectedState && (
           <button
             onClick={onBack}
@@ -157,8 +132,8 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
             center={mapCenter}
             zoom={mapZoom}
             minZoom={1}
-            maxZoom={12}
-            filterZoomEvent={e => false}
+            maxZoom={20}
+            filterZoomEvent={() => false}
           >
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
@@ -167,7 +142,6 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
                   const abbr = FIPS_TO_ABBR[fips];
                   const stateInfo = revenueByState[abbr];
                   const revenue = stateInfo?.revenue || 0;
-                  const isHovered = hoveredState === abbr && !hoveredCity;
                   const isSelected = selectedState === abbr;
                   const isDrilled = drillLevel === 'state';
                   const isDimmed = isDrilled && !isSelected;
@@ -183,10 +157,10 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
                       style={{
                         default: {
                           fill: isDimmed ? '#0f172a' : (isSelected && isDrilled ? '#1e1b4b' : fillColor),
-                          stroke: isSelected && isDrilled ? '#6d28d9' : (isDimmed ? '#1e293b' : '#334155'),
-                          strokeWidth: isSelected && isDrilled ? 1.5 : 0.5,
+                          stroke: isSelected && isDrilled ? '#7c3aed' : (isDimmed ? '#1e293b' : '#475569'),
+                          strokeWidth: isSelected && isDrilled ? 1 : 0.5,
                           outline: 'none',
-                          opacity: isDimmed ? 0.3 : 1,
+                          opacity: isDimmed ? 0.15 : 1,
                           cursor: isDrilled ? 'default' : 'pointer',
                         },
                         hover: {
@@ -194,16 +168,11 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
                           stroke: isDimmed ? '#1e293b' : '#c4b5fd',
                           strokeWidth: isDimmed ? 0.5 : 1.5,
                           outline: 'none',
-                          opacity: isDimmed ? 0.3 : 1,
+                          opacity: isDimmed ? 0.15 : 1,
                           cursor: isDrilled ? 'default' : 'pointer',
-                          filter: isDimmed ? 'none' : 'drop-shadow(0 0 8px rgba(139, 92, 246, 0.4))',
+                          filter: isDimmed ? 'none' : 'drop-shadow(0 0 6px rgba(139, 92, 246, 0.4))',
                         },
-                        pressed: {
-                          fill: '#8b5cf6',
-                          stroke: '#c4b5fd',
-                          strokeWidth: 2,
-                          outline: 'none',
-                        },
+                        pressed: { fill: '#8b5cf6', stroke: '#c4b5fd', strokeWidth: 2, outline: 'none' },
                       }}
                     />
                   );
@@ -211,34 +180,33 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
               }
             </Geographies>
 
-            {/* City bubbles when drilled into a state */}
-            {drillLevel === 'state' && selectedState && cityData.slice(0, 30).map((city, i) => {
-              const coords = getCityCoords(city.city, selectedState, i, Math.min(cityData.length, 30));
-              if (!coords) return null;
+            {/* City bubbles with real coordinates */}
+            {drillLevel === 'state' && cityBubbles.map((city, i) => {
               const r = bubbleScale(city.revenue);
-              const isHovered = hoveredCity?.city === city.city;
+              const isHov = hoveredCity?.city === city.city;
               return (
-                <Marker key={`${city.city}-${i}`} coordinates={coords}>
+                <Marker key={`${city.city}-${i}`} coordinates={city.coords}>
                   <circle
                     r={r}
-                    fill={isHovered ? '#c4b5fd' : '#8b5cf6'}
-                    fillOpacity={isHovered ? 0.95 : 0.75}
-                    stroke={isHovered ? '#e0d5ff' : '#a78bfa'}
-                    strokeWidth={isHovered ? 1.5 : 0.5}
-                    style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                    fill={isHov ? '#c4b5fd' : '#8b5cf6'}
+                    fillOpacity={isHov ? 0.95 : 0.7}
+                    stroke={isHov ? '#ffffff' : '#c4b5fd'}
+                    strokeWidth={isHov ? 1.5 : 0.5}
+                    style={{ cursor: 'pointer', transition: 'all 0.15s ease' }}
                     onMouseEnter={() => setHoveredCity(city)}
                     onMouseLeave={() => setHoveredCity(null)}
                   />
-                  {(r > 6 || isHovered) && (
+                  {(r > 4 || isHov) && (
                     <text
                       textAnchor="middle"
-                      y={r + 10}
+                      y={-r - 3}
                       style={{
-                        fontSize: '8px',
-                        fill: isHovered ? '#e0d5ff' : '#94a3b8',
+                        fontSize: isHov ? '7px' : '6px',
+                        fill: isHov ? '#ffffff' : '#c4b5fd',
                         fontFamily: 'system-ui, sans-serif',
-                        fontWeight: isHovered ? 600 : 400,
+                        fontWeight: isHov ? 700 : 500,
                         pointerEvents: 'none',
+                        textShadow: '0 1px 3px rgba(0,0,0,0.8)',
                       }}
                     >
                       {city.city}
@@ -250,48 +218,41 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
           </ZoomableGroup>
         </ComposableMap>
 
-        {/* Color legend (only in US view) */}
-        {drillLevel === 'us' && (
-          <div className="absolute bottom-4 left-4 flex items-center gap-2 bg-slate-900/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-700/50">
-            <span className="text-[10px] text-slate-400 font-medium">LOW</span>
-            <div className="flex gap-0.5">
-              {COLOR_RANGE.map((color, i) => (
-                <div key={i} className="w-5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
-              ))}
+        {/* Legend */}
+        <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-700/50">
+          {drillLevel === 'us' ? (
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] text-slate-400 font-medium">LOW</span>
+              <div className="flex gap-0.5">
+                {COLOR_RANGE.map((color, i) => (
+                  <div key={i} className="w-5 h-2.5 rounded-sm" style={{ backgroundColor: color }} />
+                ))}
+              </div>
+              <span className="text-[10px] text-slate-400 font-medium">HIGH</span>
             </div>
-            <span className="text-[10px] text-slate-400 font-medium">HIGH</span>
-          </div>
-        )}
-
-        {/* State label when zoomed */}
-        {drillLevel === 'state' && selectedState && (
-          <div className="absolute bottom-4 left-4 bg-slate-900/80 backdrop-blur-sm rounded-lg px-3 py-2 border border-slate-700/50">
+          ) : (
             <span className="text-xs text-purple-300 font-semibold">
-              {STATE_ABBR_TO_NAME[selectedState]} — Top {Math.min(cityData.length, 30)} Cities
+              {STATE_ABBR_TO_NAME[selectedState]} — {cityBubbles.length} cities mapped
             </span>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Tooltip */}
       {(hoveredState || hoveredCity) && (
         <div
           className="fixed z-[9999] pointer-events-none"
-          style={{ left: tooltipPos.x + 12, top: tooltipPos.y - 10 }}
+          style={{ left: tooltipPos.x + 14, top: tooltipPos.y - 12 }}
         >
           <div className="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2.5 shadow-xl min-w-[160px]">
             <div className="text-xs font-semibold text-white mb-1">{hoveredLabel}</div>
             {hoveredItem ? (
               <>
-                <div className="text-sm font-bold text-purple-300">
-                  {fmtDollar(hoveredItem.revenue)}
-                </div>
-                <div className="text-[10px] text-slate-400 mt-0.5">
-                  {fmtNumber(hoveredItem.order_count)} orders
-                </div>
+                <div className="text-sm font-bold text-purple-300">{fmtDollar(hoveredItem.revenue)}</div>
+                <div className="text-[10px] text-slate-400 mt-0.5">{fmtNumber(hoveredItem.order_count)} orders</div>
                 <div className="mt-1.5 h-1 bg-slate-700 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-purple-600 to-violet-400 rounded-full transition-all"
+                    className="h-full bg-gradient-to-r from-purple-600 to-violet-400 rounded-full"
                     style={{ width: `${Math.min((hoveredItem.revenue / maxRevenue) * 100, 100)}%` }}
                   />
                 </div>
