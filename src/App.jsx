@@ -5,6 +5,7 @@ import { LoginPage } from './components/design-system/Auth/LoginPage.jsx';
 import { GeoMap } from './components/GeoMap.jsx';
 import { KPICards } from './components/KPICards.jsx';
 import { Leaderboard } from './components/Leaderboard.jsx';
+import { TopCitiesChart } from './components/TopCitiesChart.jsx';
 import { DateRangePicker } from './components/DateRangePicker.jsx';
 import { Spinner } from './components/design-system/Loading/Spinner.jsx';
 import {
@@ -12,6 +13,7 @@ import {
   fetchStateRevenue,
   fetchCityRevenue,
   fetchZipRevenue,
+  fetchTopCities,
   STATE_ABBR_TO_NAME,
 } from './services/geoDataService.js';
 
@@ -39,6 +41,7 @@ function App() {
   // Data
   const [totals, setTotals] = useState(null);
   const [stateData, setStateData] = useState([]);
+  const [topCities, setTopCities] = useState([]);
   const [cityData, setCityData] = useState([]);
   const [zipData, setZipData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -85,13 +88,15 @@ function App() {
     async function load() {
       setLoading(true);
       try {
-        const [t, s] = await Promise.all([
+        const [t, s, tc] = await Promise.all([
           fetchTotals(dateRange.from, dateRange.to),
           fetchStateRevenue(dateRange.from, dateRange.to),
+          fetchTopCities(dateRange.from, dateRange.to, 50),
         ]);
         if (cancelled) return;
         setTotals(t);
         setStateData(s);
+        setTopCities(tc);
       } catch (err) {
         console.error('Failed to load geo data:', err);
       } finally {
@@ -243,6 +248,13 @@ function App() {
               />
             </div>
           </div>
+
+          {/* Top Cities Chart */}
+          {drillLevel === 'us' && (
+            <div className="mt-6">
+              <TopCitiesChart data={topCities} loading={loading} />
+            </div>
+          )}
         </div>
       </div>
     </div>

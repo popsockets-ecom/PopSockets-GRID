@@ -28,6 +28,16 @@ export async function fetchCityRevenue(from, to, state) {
   return data || [];
 }
 
+export async function fetchTopCities(from, to, limit = 50) {
+  const { data, error } = await supabase.rpc('get_geo_top_cities', {
+    p_from: from,
+    p_to: to,
+    p_limit: limit,
+  });
+  if (error) throw error;
+  return data || [];
+}
+
 export async function fetchZipRevenue(from, to, state) {
   const { data, error } = await supabase.rpc('get_geo_revenue_by_zip', {
     p_from: from,
