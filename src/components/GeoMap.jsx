@@ -1,47 +1,45 @@
-import React, { useState, useMemo, useCallback, useEffect } from 'react';
+import React, { useState, useMemo, useCallback, useRef } from 'react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { scaleLog, scaleSqrt } from 'd3-scale';
+import { geoAlbersUsa, geoPath } from 'd3-geo';
 import { fmtDollar, fmtNumber } from '../utils/formatters.js';
 import { FIPS_TO_ABBR, STATE_ABBR_TO_NAME } from '../services/geoDataService.js';
 import { getCityCoordinates } from '../data/cityCoords.js';
 
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
+const MAP_WIDTH = 800;
+const MAP_HEIGHT = 500;
+const MAP_SCALE = 1000;
+const FILL_RATIO = 0.75; // state fills 75% of viewport
 
-// Inverted: light = low revenue, dark/saturated = high revenue
 const COLOR_RANGE = [
   '#e0d5ff', '#c4b5fd', '#a78bfa', '#8b6cf5', '#7c5ce6',
   '#6d4fcc', '#5b45b2', '#4c3d99', '#3b2580',
 ];
 
-// State center coordinates for zoom targeting
-const STATE_CENTERS = {
-  AL:[-86.8,32.8],AK:[-153,64],AZ:[-111.7,34.3],AR:[-92.2,34.8],CA:[-119.5,37.2],
-  CO:[-105.5,39],CT:[-72.7,41.6],DE:[-75.5,39],FL:[-82.4,28.6],GA:[-83.5,32.7],
-  HI:[-157,20.5],ID:[-114.6,44.4],IL:[-89.2,40],IN:[-86.3,39.8],IA:[-93.5,42],
-  KS:[-98.3,38.5],KY:[-85.7,37.8],LA:[-92,31],ME:[-69,45.4],MD:[-76.8,39.1],
-  MA:[-71.8,42.2],MI:[-85,44.3],MN:[-94.3,46.3],MS:[-89.7,32.7],MO:[-92.5,38.4],
-  MT:[-109.6,47],NE:[-99.8,41.5],NV:[-116.9,39.5],NH:[-71.6,43.7],NJ:[-74.7,40.1],
-  NM:[-106,34.5],NY:[-75.5,42.9],NC:[-79.4,35.6],ND:[-100.5,47.4],OH:[-82.8,40.3],
-  OK:[-97.5,35.6],OR:[-120.5,44],PA:[-77.8,40.9],RI:[-71.5,41.7],SC:[-80.9,33.9],
-  SD:[-100.2,44.4],TN:[-86.4,35.9],TX:[-99.4,31.5],UT:[-111.7,39.3],VT:[-72.7,44],
-  VA:[-78.9,37.5],WA:[-120.5,47.4],WV:[-80.6,38.6],WI:[-89.8,44.6],WY:[-107.5,43],
-  DC:[-77,38.9],
-};
+// Compute center and zoom from a geography feature's projected bounds
+function computeStateView(geo) {
+  const projection = geoAlbersUsa().scale(MAP_SCALE).translate([MAP_WIDTH / 2, MAP_HEIGHT / 2]);
+  const pathGen = geoPath().projection(projection);
+  const bounds = pathGen.bounds(geo);
 
-// Zoom level per state - tuned so the full state fits in view with padding
-function getStateZoom(abbr) {
-  const custom = {
-    AK:1.8, HI:4, TX:2.6, CA:2.8, MT:3.5, NM:3.5, AZ:3.5, NV:3.5,
-    CO:4, OR:3.5, WY:4.5, MN:3.5, MI:3.5, FL:3.5, NY:4, WA:4,
-    RI:10, DE:8, CT:6.5, NJ:6, NH:6, VT:6, MA:6, MD:6, DC:12,
-    GA:4, NC:4, VA:4, PA:4.5, IL:4, OH:4.5, IN:4.5, WI:4, MO:4,
-    AL:4.5, SC:5, KY:4, TN:4, LA:4.5, AR:5, MS:4.5, IA:4.5,
-    KS:4, NE:4, OK:4, SD:4.5, ND:4.5, ID:3.5, ME:5, WV:5.5,
-    UT:4,
-  };
-  const center = STATE_CENTERS[abbr] || [-96, 38];
-  const zoom = custom[abbr] || 5;
-  return { center, zoom };
+  if (!bounds || !isFinite(bounds[0][0])) return null;
+
+  const [[x0, y0], [x1, y1]] = bounds;
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+
+  // Projected center → back to geo coordinates
+  const center = projection.invert([(x0 + x1) / 2, (y0 + y1) / 2]);
+  if (!center) return null;
+
+  // Zoom so the state fills FILL_RATIO of the viewport
+  const zoom = Math.min(
+    (MAP_WIDTH * FILL_RATIO) / dx,
+    (MAP_HEIGHT * FILL_RATIO) / dy
+  );
+
+  return { center, zoom: Math.max(1, Math.min(zoom, 15)) };
 }
 
 export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedState, onBack, drillLevel }) {
@@ -50,17 +48,23 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   const [mapCenter, setMapCenter] = useState([-96, 38]);
   const [mapZoom, setMapZoom] = useState(1);
+  const geoFeaturesRef = useRef({});
 
-  useEffect(() => {
-    if (drillLevel === 'state' && selectedState) {
-      const { center, zoom } = getStateZoom(selectedState);
-      setMapCenter(center);
-      setMapZoom(zoom);
-    } else {
-      setMapCenter([-96, 38]);
-      setMapZoom(1);
+  const handleStateClick = useCallback((abbr, geo) => {
+    // Compute zoom from actual geometry
+    const view = computeStateView(geo);
+    if (view) {
+      setMapCenter(view.center);
+      setMapZoom(view.zoom);
     }
-  }, [drillLevel, selectedState]);
+    onStateClick?.(abbr);
+  }, [onStateClick]);
+
+  const handleBack = useCallback(() => {
+    setMapCenter([-96, 38]);
+    setMapZoom(1);
+    onBack?.();
+  }, [onBack]);
 
   const revenueByState = useMemo(() => {
     const map = {};
@@ -86,7 +90,6 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
     return COLOR_RANGE[Math.min(idx, COLOR_RANGE.length - 1)];
   }, [colorScale]);
 
-  // City bubbles: only cities with real coordinates
   const cityBubbles = useMemo(() => {
     if (!selectedState || cityData.length === 0) return [];
     return cityData
@@ -120,7 +123,7 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
       <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden backdrop-blur-sm">
         {drillLevel === 'state' && selectedState && (
           <button
-            onClick={onBack}
+            onClick={handleBack}
             className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-sm border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-purple-300 hover:text-white hover:border-purple-500 transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
@@ -130,9 +133,9 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
 
         <ComposableMap
           projection="geoAlbersUsa"
-          projectionConfig={{ scale: 1000 }}
-          width={800}
-          height={500}
+          projectionConfig={{ scale: MAP_SCALE }}
+          width={MAP_WIDTH}
+          height={MAP_HEIGHT}
           style={{ width: '100%', height: 'auto' }}
         >
           <ZoomableGroup
@@ -160,7 +163,7 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
                       geography={geo}
                       onMouseEnter={() => !isDrilled && setHoveredState(abbr)}
                       onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => abbr && !isDrilled && onStateClick?.(abbr)}
+                      onClick={() => abbr && !isDrilled && handleStateClick(abbr, geo)}
                       style={{
                         default: {
                           fill: isDimmed ? '#0f172a' : (isSelected && isDrilled ? '#1e1b4b' : fillColor),
