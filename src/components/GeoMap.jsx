@@ -7,16 +7,17 @@ import { FIPS_TO_ABBR, STATE_ABBR_TO_NAME } from '../services/geoDataService.js'
 const GEO_URL = 'https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json';
 
 // All steps are visible against the dark background
+// Inverted: light = low revenue, dark/saturated = high revenue
 const COLOR_RANGE = [
-  '#3b3470', // deep indigo (visible, not invisible)
-  '#4c3d99', // indigo
-  '#5b45b2', // purple-indigo
-  '#6d4fcc', // medium purple
-  '#7c5ce6', // bright purple
-  '#8b6cf5', // violet
-  '#a78bfa', // violet-400
+  '#e0d5ff', // near-white violet (lowest)
   '#c4b5fd', // violet-300
-  '#e0d5ff', // near-white violet (highest)
+  '#a78bfa', // violet-400
+  '#8b6cf5', // violet
+  '#7c5ce6', // bright purple
+  '#6d4fcc', // medium purple
+  '#5b45b2', // purple-indigo
+  '#4c3d99', // indigo
+  '#3b2580', // deep indigo (highest)
 ];
 
 // State centroid coordinates for city bubble positioning reference
