@@ -24,8 +24,8 @@ function getDefaultDates() {
 }
 
 const PASSWORDS = {
-  BEBOLD: 'admin',
-  FINDAWAY: 'viewer',
+  BEBOLD: 'user',
+  ADMIN: 'admin',
 };
 
 function App() {
