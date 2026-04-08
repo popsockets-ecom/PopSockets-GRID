@@ -3,12 +3,12 @@ import { X } from 'lucide-react';
 
 export function SidebarHeader({ appName, tagline, logoSrc, logoComponent, isMobile = false, onClose }) {
   return (
-    <div className="px-5 py-5 border-b border-slate-600/50 bg-gradient-to-r from-slate-800 via-purple-800 to-blue-800 backdrop-blur-sm">
-      <div className="flex items-center gap-3">
+    <div className="px-4 py-3.5 border-b border-slate-600/50 bg-gradient-to-r from-slate-800 via-purple-800 to-blue-800 backdrop-blur-sm">
+      <div className="flex items-center gap-2.5">
         {logoComponent ? (
           <div className="flex-shrink-0">{logoComponent}</div>
         ) : logoSrc ? (
-          <img src={logoSrc} alt={`${appName} Logo`} className="w-14 h-14 rounded-lg flex-shrink-0" />
+          <img src={logoSrc} alt={`${appName} Logo`} className="w-16 h-16 rounded-xl flex-shrink-0" />
         ) : (
           <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-700 rounded-lg flex items-center justify-center flex-shrink-0">
             <span className="text-white font-bold text-lg">{appName?.charAt(0) || 'P'}</span>
