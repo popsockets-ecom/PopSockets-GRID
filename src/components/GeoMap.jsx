@@ -31,13 +31,13 @@ const STATE_CENTERS = {
 // Zoom level per state - tuned so the full state fits in view with padding
 function getStateZoom(abbr) {
   const custom = {
-    AK:2, HI:5, TX:3.2, CA:3.5, MT:4.5, NM:4.5, AZ:4.5, NV:4.5,
-    CO:5, OR:4.5, WY:5.5, MN:4.5, MI:4.5, FL:4.5, NY:5, WA:5,
-    RI:12, DE:10, CT:8, NJ:7, NH:7, VT:7, MA:7, MD:7, DC:14,
-    GA:5, NC:5, VA:5, PA:5.5, IL:5, OH:5.5, IN:5.5, WI:5, MO:5,
-    AL:5.5, SC:6, KY:5, TN:5, LA:5.5, AR:6, MS:5.5, IA:5.5,
-    KS:5, NE:5, OK:5, SD:5.5, ND:5.5, ID:4.5, ME:6, WV:6.5,
-    NM:4.5, UT:5,
+    AK:1.8, HI:4, TX:2.6, CA:2.8, MT:3.5, NM:3.5, AZ:3.5, NV:3.5,
+    CO:4, OR:3.5, WY:4.5, MN:3.5, MI:3.5, FL:3.5, NY:4, WA:4,
+    RI:10, DE:8, CT:6.5, NJ:6, NH:6, VT:6, MA:6, MD:6, DC:12,
+    GA:4, NC:4, VA:4, PA:4.5, IL:4, OH:4.5, IN:4.5, WI:4, MO:4,
+    AL:4.5, SC:5, KY:4, TN:4, LA:4.5, AR:5, MS:4.5, IA:4.5,
+    KS:4, NE:4, OK:4, SD:4.5, ND:4.5, ID:3.5, ME:5, WV:5.5,
+    UT:4,
   };
   const center = STATE_CENTERS[abbr] || [-96, 38];
   const zoom = custom[abbr] || 5;

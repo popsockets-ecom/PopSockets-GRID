@@ -3,8 +3,8 @@ import { X } from 'lucide-react';
 
 export function SidebarHeader({ appName, tagline, logoSrc, logoComponent, isMobile = false, onClose }) {
   return (
-    <div className="px-6 py-4 border-b border-slate-600/50 bg-gradient-to-r from-slate-800 via-purple-800 to-blue-800 backdrop-blur-sm">
-      <div className="flex items-center gap-2.5">
+    <div className="px-5 py-5 border-b border-slate-600/50 bg-gradient-to-r from-slate-800 via-purple-800 to-blue-800 backdrop-blur-sm">
+      <div className="flex items-center gap-3">
         {logoComponent ? (
           <div className="flex-shrink-0">{logoComponent}</div>
         ) : logoSrc ? (
