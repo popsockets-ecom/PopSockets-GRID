@@ -25,9 +25,9 @@ export function LoginPage({
         <div className="bg-slate-800 rounded-lg shadow-xl p-8 border border-slate-700">
           <div className="text-center mb-8">
             {(logoSrc || logoComponent) && (
-              <div className="flex justify-center mb-4">
+              <div className="flex justify-center mb-2">
                 {logoComponent ? logoComponent : (
-                  <img src={logoSrc} alt={`${appName} Logo`} className="h-28" />
+                  <img src={logoSrc} alt={`${appName} Logo`} className="h-36" />
                 )}
               </div>
             )}
