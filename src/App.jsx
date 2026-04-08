@@ -150,7 +150,7 @@ function App() {
 
   const navigationItems = [
     { isSection: true, id: 'section-analytics', label: 'Analytics' },
-    { id: 'heatmap', label: 'Revenue Heat Map', icon: Map },
+    { id: 'heatmap', label: 'US Heat Map', icon: Map },
   ];
 
   if (!isAuthenticated) {
@@ -195,8 +195,8 @@ function App() {
             <Globe className="w-4 h-4 text-purple-200" />
             <span className="text-sm font-semibold text-white">
               {drillLevel === 'state' && selectedState
-                ? `${STATE_ABBR_TO_NAME[selectedState] || selectedState} Detail`
-                : 'United States Overview'}
+                ? `${STATE_ABBR_TO_NAME[selectedState] || selectedState} Heat Map`
+                : 'US Heat Map'}
             </span>
           </div>
         </div>
