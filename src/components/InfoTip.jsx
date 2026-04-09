@@ -10,7 +10,7 @@ const COLOR_MAP = {
   amber:  { gradient: 'linear-gradient(90deg, #f59e0b, #d97706)', text: 'text-amber-400',  hover: 'hover:text-amber-400' },
 };
 
-export function InfoTip({ text, label, color = 'purple' }) {
+export function InfoTip({ text, label, color = 'purple', light = false }) {
   const iconRef = useRef(null);
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
@@ -33,7 +33,7 @@ export function InfoTip({ text, label, color = 'purple' }) {
         onMouseEnter={handleEnter}
         onMouseLeave={() => setShow(false)}
       >
-        <Info className={`w-3 h-3 text-slate-500 cursor-help ${scheme.hover} transition-colors`} />
+        <Info className={`w-3 h-3 cursor-help transition-colors ${light ? 'text-purple-200/60 hover:text-white' : `text-slate-500 ${scheme.hover}`}`} />
       </span>
       {show && createPortal(
         <div

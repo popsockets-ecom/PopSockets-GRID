@@ -206,6 +206,7 @@ function App() {
               <InfoTip
                 label="Heat Map"
                 text="Interactive choropleth showing US DTC revenue by geography. Darker states have higher revenue. Click any state to drill into city-level bubbles and zip code rankings."
+                light
               />
             </span>
           </div>
