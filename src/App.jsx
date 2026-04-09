@@ -167,8 +167,6 @@ function App() {
         logoSrc="/logo.png"
         onSubmit={handleLogin}
         error={authError}
-        buttonText="Access Dashboard"
-        footerText="Protected data. Authorized access only."
       />
     );
   }
