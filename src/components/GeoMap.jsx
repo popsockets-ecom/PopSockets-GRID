@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { ComposableMap, Geographies, Geography, ZoomableGroup, Marker } from 'react-simple-maps';
 import { scaleLog, scaleSqrt } from 'd3-scale';
 import { geoAlbersUsa, geoPath } from 'd3-geo';
@@ -50,19 +50,25 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
   const [mapZoom, setMapZoom] = useState(1);
   const geoFeaturesRef = useRef({});
 
-  const handleStateClick = useCallback((abbr, geo) => {
-    // Compute zoom from actual geometry
-    const view = computeStateView(geo);
-    if (view) {
-      setMapCenter(view.center);
-      setMapZoom(view.zoom);
+  // Auto-zoom when selectedState changes (from any source: map click OR leaderboard click)
+  useEffect(() => {
+    if (drillLevel === 'state' && selectedState && geoFeaturesRef.current[selectedState]) {
+      const view = computeStateView(geoFeaturesRef.current[selectedState]);
+      if (view) {
+        setMapCenter(view.center);
+        setMapZoom(view.zoom);
+      }
+    } else if (drillLevel === 'us') {
+      setMapCenter([-96, 38]);
+      setMapZoom(1);
     }
+  }, [selectedState, drillLevel]);
+
+  const handleStateClick = useCallback((abbr) => {
     onStateClick?.(abbr);
   }, [onStateClick]);
 
   const handleBack = useCallback(() => {
-    setMapCenter([-96, 38]);
-    setMapZoom(1);
     onBack?.();
   }, [onBack]);
 
@@ -121,13 +127,21 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
   return (
     <div className="relative" onMouseMove={handleMouseMove}>
       <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 overflow-hidden backdrop-blur-sm">
-        {drillLevel === 'state' && selectedState && (
+        {drillLevel === 'state' && selectedState ? (
           <button
             onClick={handleBack}
             className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-sm border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-purple-300 hover:text-white hover:border-purple-500 transition-colors"
           >
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" /></svg>
             Back to US
+          </button>
+        ) : (mapZoom !== 1 || mapCenter[0] !== -96 || mapCenter[1] !== 38) && (
+          <button
+            onClick={() => { setMapCenter([-96, 38]); setMapZoom(1); }}
+            className="absolute top-3 left-3 z-20 flex items-center gap-1.5 bg-slate-900/90 backdrop-blur-sm border border-slate-600 rounded-lg px-3 py-1.5 text-xs text-purple-300 hover:text-white hover:border-purple-500 transition-colors"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-4 0h4" /></svg>
+            Reset View
           </button>
         )}
 
@@ -144,12 +158,14 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
             minZoom={1}
             maxZoom={20}
             filterZoomEvent={() => false}
+            onMoveEnd={({ coordinates, zoom }) => { setMapCenter(coordinates); setMapZoom(zoom); }}
           >
             <Geographies geography={GEO_URL}>
               {({ geographies }) =>
                 geographies.map(geo => {
                   const fips = geo.id;
                   const abbr = FIPS_TO_ABBR[fips];
+                  if (abbr) geoFeaturesRef.current[abbr] = geo;
                   const stateInfo = revenueByState[abbr];
                   const revenue = stateInfo?.revenue || 0;
                   const isSelected = selectedState === abbr;
@@ -163,7 +179,7 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
                       geography={geo}
                       onMouseEnter={() => !isDrilled && setHoveredState(abbr)}
                       onMouseLeave={() => setHoveredState(null)}
-                      onClick={() => abbr && !isDrilled && handleStateClick(abbr, geo)}
+                      onClick={() => abbr && !isDrilled && handleStateClick(abbr)}
                       style={{
                         default: {
                           fill: isDimmed ? '#0f172a' : (isSelected && isDrilled ? '#1e1b4b' : fillColor),
