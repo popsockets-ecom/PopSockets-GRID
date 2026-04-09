@@ -72,7 +72,7 @@ export function Leaderboard({
             <Trophy className="w-4 h-4 text-amber-400" />
             <h3 className="text-sm font-semibold text-white">
               Top States by Revenue
-              <InfoTip label="Leaderboard" text="Top 25 US states ranked by net product revenue. Click any state to drill down into its cities and zip codes on the map." />
+              <InfoTip label="Leaderboard" text="Top 25 US states ranked by net product revenue. Click any state to drill down into its cities and zip codes on the map." color="amber" />
             </h3>
           </div>
         </div>

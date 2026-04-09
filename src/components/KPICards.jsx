@@ -22,7 +22,7 @@ function KPICard({ label, value, icon: Icon, color, loading, tooltip }) {
         <div className="flex-1">
           <div className={`text-xs font-semibold uppercase tracking-wide ${scheme.label} mb-1.5`}>
             {label}
-            {tooltip && <InfoTip text={tooltip} label={label} />}
+            {tooltip && <InfoTip text={tooltip} label={label} color={color} />}
           </div>
           {loading ? (
             <div className="py-1"><Spinner size="sm" color="purple" /></div>

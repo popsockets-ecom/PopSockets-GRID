@@ -2,10 +2,19 @@ import React, { useState, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
 
-export function InfoTip({ text, label }) {
+const COLOR_MAP = {
+  purple: { gradient: 'linear-gradient(90deg, #9333ea, #7e22ce)', text: 'text-purple-400', hover: 'hover:text-purple-400' },
+  green:  { gradient: 'linear-gradient(90deg, #22c55e, #16a34a)', text: 'text-green-400',  hover: 'hover:text-green-400' },
+  cyan:   { gradient: 'linear-gradient(90deg, #06b6d4, #0891b2)', text: 'text-cyan-400',   hover: 'hover:text-cyan-400' },
+  orange: { gradient: 'linear-gradient(90deg, #f97316, #ea580c)', text: 'text-orange-400', hover: 'hover:text-orange-400' },
+  amber:  { gradient: 'linear-gradient(90deg, #f59e0b, #d97706)', text: 'text-amber-400',  hover: 'hover:text-amber-400' },
+};
+
+export function InfoTip({ text, label, color = 'purple' }) {
   const iconRef = useRef(null);
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState({ top: 0, left: 0 });
+  const scheme = COLOR_MAP[color] || COLOR_MAP.purple;
 
   const handleEnter = useCallback(() => {
     if (iconRef.current) {
@@ -24,7 +33,7 @@ export function InfoTip({ text, label }) {
         onMouseEnter={handleEnter}
         onMouseLeave={() => setShow(false)}
       >
-        <Info className="w-3 h-3 text-slate-500 cursor-help hover:text-purple-400 transition-colors" />
+        <Info className={`w-3 h-3 text-slate-500 cursor-help ${scheme.hover} transition-colors`} />
       </span>
       {show && createPortal(
         <div
@@ -41,12 +50,12 @@ export function InfoTip({ text, label }) {
             className="rounded-xl border border-slate-700 shadow-2xl overflow-hidden"
             style={{ backgroundColor: '#0f172a' }}
           >
-            <div style={{ height: 3, background: 'linear-gradient(90deg, #9333ea, #7e22ce)' }} />
+            <div style={{ height: 3, background: scheme.gradient }} />
             <div className="px-4 py-3">
               {label && (
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Info className="w-3.5 h-3.5 text-purple-400" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wider text-purple-400">{label}</span>
+                  <Info className={`w-3.5 h-3.5 ${scheme.text}`} />
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider ${scheme.text}`}>{label}</span>
                 </div>
               )}
               <p className="text-sm text-slate-200 leading-relaxed whitespace-normal font-normal m-0">
