@@ -3,6 +3,7 @@ import { DollarSign, ShoppingCart, TrendingUp, MapPin } from 'lucide-react';
 import { fmtDollar, fmtNumber } from '../utils/formatters.js';
 import { STATE_ABBR_TO_NAME } from '../services/geoDataService.js';
 import { Spinner } from './design-system/Loading/Spinner.jsx';
+import { InfoTip } from './InfoTip.jsx';
 
 const COLOR_SCHEMES = {
   purple: { label: 'text-purple-400', glow: 'from-purple-500 to-purple-600' },
@@ -11,7 +12,7 @@ const COLOR_SCHEMES = {
   orange: { label: 'text-orange-400', glow: 'from-orange-500 to-orange-600' },
 };
 
-function KPICard({ label, value, icon: Icon, color, loading }) {
+function KPICard({ label, value, icon: Icon, color, loading, tooltip }) {
   const scheme = COLOR_SCHEMES[color] || COLOR_SCHEMES.purple;
 
   return (
@@ -19,7 +20,10 @@ function KPICard({ label, value, icon: Icon, color, loading }) {
       <div className={`absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r ${scheme.glow}`} />
       <div className="flex items-center justify-between">
         <div className="flex-1">
-          <div className={`text-xs font-semibold uppercase tracking-wide ${scheme.label} mb-1.5`}>{label}</div>
+          <div className={`text-xs font-semibold uppercase tracking-wide ${scheme.label} mb-1.5`}>
+            {label}
+            {tooltip && <InfoTip text={tooltip} label={label} />}
+          </div>
           {loading ? (
             <div className="py-1"><Spinner size="sm" color="purple" /></div>
           ) : (
@@ -43,6 +47,7 @@ export function KPICards({ totals, topState, loading }) {
         icon={DollarSign}
         color="purple"
         loading={loading}
+        tooltip="Total net product revenue from US DTC orders shipped to valid US addresses for the selected date range."
       />
       <KPICard
         label="Total Orders"
@@ -50,6 +55,7 @@ export function KPICards({ totals, topState, loading }) {
         icon={ShoppingCart}
         color="green"
         loading={loading}
+        tooltip="Count of unique US DTC orders shipped to US addresses. Each order number is counted once regardless of line items."
       />
       <KPICard
         label="Avg Order Value"
@@ -57,6 +63,7 @@ export function KPICards({ totals, topState, loading }) {
         icon={TrendingUp}
         color="cyan"
         loading={loading}
+        tooltip="Average revenue per order. Calculated as Total Revenue divided by Total Orders."
       />
       <KPICard
         label="Top State"
@@ -64,6 +71,7 @@ export function KPICards({ totals, topState, loading }) {
         icon={MapPin}
         color="orange"
         loading={loading}
+        tooltip="The state with the highest total revenue for the selected date range."
       />
     </div>
   );

@@ -8,6 +8,7 @@ import { Leaderboard } from './components/Leaderboard.jsx';
 import { TopCitiesChart } from './components/TopCitiesChart.jsx';
 import { DateRangePicker } from './components/DateRangePicker.jsx';
 import { Spinner } from './components/design-system/Loading/Spinner.jsx';
+import { InfoTip } from './components/InfoTip.jsx';
 import {
   fetchTotals,
   fetchStateRevenue,
@@ -202,6 +203,10 @@ function App() {
               {drillLevel === 'state' && selectedState
                 ? `${STATE_ABBR_TO_NAME[selectedState] || selectedState} Heat Map`
                 : 'US Heat Map'}
+              <InfoTip
+                label="Heat Map"
+                text="Interactive choropleth showing US DTC revenue by geography. Darker states have higher revenue. Click any state to drill into city-level bubbles and zip code rankings."
+              />
             </span>
           </div>
         </div>

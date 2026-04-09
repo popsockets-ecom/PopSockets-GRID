@@ -3,6 +3,7 @@ import { ChevronRight, ArrowLeft, Trophy, MapPin, Building2, Hash } from 'lucide
 import { fmtDollar, fmtNumber, fmtDollarExact } from '../utils/formatters.js';
 import { STATE_ABBR_TO_NAME } from '../services/geoDataService.js';
 import { Spinner } from './design-system/Loading/Spinner.jsx';
+import { InfoTip } from './InfoTip.jsx';
 
 const MEDALS = ['bg-amber-500/20 text-amber-400 border-amber-500/30', 'bg-slate-400/20 text-slate-300 border-slate-400/30', 'bg-orange-600/20 text-orange-400 border-orange-600/30'];
 
@@ -69,7 +70,10 @@ export function Leaderboard({
         <div className="px-4 py-3 border-b border-slate-700/50">
           <div className="flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" />
-            <h3 className="text-sm font-semibold text-white">Top States by Revenue</h3>
+            <h3 className="text-sm font-semibold text-white">
+              Top States by Revenue
+              <InfoTip label="Leaderboard" text="Top 25 US states ranked by net product revenue. Click any state to drill down into its cities and zip codes on the map." />
+            </h3>
           </div>
         </div>
         <div className="p-2 max-h-[500px] overflow-y-auto scrollbar-thin">

@@ -3,6 +3,7 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 
 import { Building2 } from 'lucide-react';
 import { fmtDollar, fmtNumber } from '../utils/formatters.js';
 import { Spinner } from './design-system/Loading/Spinner.jsx';
+import { InfoTip } from './InfoTip.jsx';
 
 function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
@@ -30,7 +31,10 @@ export function TopCitiesChart({ data = [], loading }) {
     <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 backdrop-blur-sm overflow-hidden">
       <div className="px-5 py-3.5 border-b border-slate-700/50 flex items-center gap-2">
         <Building2 className="w-4 h-4 text-purple-400" />
-        <h3 className="text-sm font-semibold text-white">Top 50 Cities by Revenue</h3>
+        <h3 className="text-sm font-semibold text-white">
+          Top 50 Cities by Revenue
+          <InfoTip label="Top Cities" text="The 50 highest-revenue US cities across all states. Bar intensity reflects relative revenue. Hover any bar for exact revenue and order count." />
+        </h3>
       </div>
 
       {loading ? (
