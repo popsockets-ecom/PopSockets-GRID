@@ -29,6 +29,7 @@ export function LoginPage({
   appName = 'Dashboard',
   tagline = 'Enter password to continue',
   logoSrc = '/logo.png',
+  logoComponent,
   onSubmit,
   error,
   buttonText = 'Sign In',
@@ -49,13 +50,13 @@ export function LoginPage({
         <div className="bg-slate-800 rounded-lg shadow-xl p-8 border border-slate-700">
           {/* Header */}
           <div className="text-center mb-8">
-            {logoSrc && (
+            {(logoComponent || logoSrc) && (
               <div className="flex justify-center mb-4">
-                <img
+                {logoComponent || <img
                   src={logoSrc}
                   alt={`${appName} Logo`}
                   className="h-20"
-                />
+                />}
               </div>
             )}
             <h1 className="text-2xl font-bold text-white">
