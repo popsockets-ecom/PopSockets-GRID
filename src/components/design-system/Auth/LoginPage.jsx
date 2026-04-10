@@ -32,7 +32,7 @@ export function LoginPage({
   onSubmit,
   error,
   buttonText = 'Sign In',
-  footerText
+  footerText = 'Protected data. Authorized access only.'
 }) {
   const [password, setPassword] = useState('');
 

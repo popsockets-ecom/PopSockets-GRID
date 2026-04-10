@@ -13,15 +13,19 @@
 
 ---
 
-## Current State (Last Updated: 2026-04-08)
+## Current State (Last Updated: 2026-04-09)
 
-**Working on:** Filtered geo RPCs to US DTC only, added GRID to PIT portal
+**Working on:** Polish pass complete. Miami exclusion active.
 **Branch:** main
-**Status:** Live. Revenue now scoped to US DTC channel to match PATH figures.
+**Status:** Live at https://popsockets-grid.vercel.app. Added to PIT portal.
 **Next steps:**
 - [ ] Investigate Snowflake orders table for `order_status` column to exclude cancellations
 - [ ] DMA mapping (requires 43K-row zip-to-DMA lookup table)
-- [ ] Consider design system audit for consistency across apps
+- [ ] Rotate 3 exposed API keys (OpenAI in CAGE, Anthropic in TARA, Supabase service role in TARA)
+- [ ] Remove Miami exclusion when instructed by user
+
+**Active data filters:**
+- **Miami exclusion**: All 5 RPCs exclude Miami orders from 2026-03-26 onward. Temporary filter, remove when user says so. Applied via migration `exclude_miami_orders_from_march_26` (then adjusted to 24th, then reverted to 26th via `revert_miami_exclusion_to_march_26`).
 
 **Context that's hard to get from code alone:**
 - GRID revenue ($5.32M YTD) is slightly lower than PATH US DTC ($5.36M) because GRID can only count orders with valid shipping state codes. ~$78K of US DTC orders have NULL/bad state data and can't be mapped geographically.
@@ -81,9 +85,10 @@ Deploy: Push to GitHub main branch. Vercel auto-deploys.
 |------|---------|-------|
 | `src/App.jsx` | Main component, state orchestration | Auth, date range, data fetching, drill-down |
 | `src/components/GeoMap.jsx` | Choropleth map + city bubbles | d3-geo auto-zoom, log color scale |
-| `src/components/KPICards.jsx` | 4 metric cards | Matches PATH StatCard pattern |
-| `src/components/Leaderboard.jsx` | Ranked list (states or cities/zips) | Tabbed in state view |
-| `src/components/TopCitiesChart.jsx` | Top 50 cities bar chart | Revenue-intensity coloring |
+| `src/components/KPICards.jsx` | 4 metric cards | Matches PATH StatCard pattern, color-matched tooltips |
+| `src/components/Leaderboard.jsx` | Ranked list (states or cities/zips) | Tabbed in state view, amber tooltip |
+| `src/components/TopCitiesChart.jsx` | Top 50 cities bar chart | Revenue-intensity coloring, purple tooltip |
+| `src/components/InfoTip.jsx` | Portal-based info tooltips | Color-matched accent bar, matches TikTok Performance style |
 | `src/components/DateRangePicker.jsx` | Date inputs + presets | Mountain Time boundaries |
 | `src/services/geoDataService.js` | All Supabase RPC calls | 5 functions + state mappings |
 | `src/data/cityCoords.js` | ~300 US city coordinates | [lng, lat] for bubble placement |
@@ -162,6 +167,13 @@ Storage: `localStorage` (not sessionStorage). 24-hour session expiry.
 - Zoom = `min(width/geoWidth, height/geoHeight) * 0.75` (75% fill ratio)
 - Center computed from projected geometry centroid
 - NOT hardcoded per state. Works for any state including Alaska/Hawaii
+- Geo features cached in `geoFeaturesRef` on first render, so zoom works from both map clicks AND leaderboard clicks
+- `useEffect` on `selectedState`/`drillLevel` drives zoom (not the click handler)
+
+### Reset View Button
+- Appears in US view when map is panned away from default center/zoom
+- Resets to `[-96, 38]` center, zoom 1
+- Tracks position via `onMoveEnd` callback on ZoomableGroup
 
 ## Environment Variables
 
@@ -195,6 +207,9 @@ VITE_SUPABASE_ANON_KEY=[JWT token]
 5. `normalize_city_names_in_geo_rpcs` - INITCAP deduplication for city names
 6. `add_top_cities_rpc` - get_geo_top_cities for bar chart
 7. `filter_geo_rpcs_us_dtc_only` - Added `dtc_channel = 'US DTC'` to all 5 RPCs
+8. `exclude_miami_orders_from_march_26` - Temporary Miami exclusion from 2026-03-26 onward
+9. `adjust_miami_exclusion_to_march_24` - Changed to March 24 (then reverted)
+10. `revert_miami_exclusion_to_march_26` - Back to March 26 cutoff
 
 ## Backfill History
 
@@ -227,6 +242,14 @@ VITE_SUPABASE_ANON_KEY=[JWT token]
 **What happened:** City labels and bubbles grew huge when zooming into a state because SVG elements scale with the ZoomableGroup transform.
 **Correct approach:** Divide fontSize and bubble radius by the current zoom level.
 
+### 2026-04-09 - Leaderboard clicks didn't zoom the map
+**What happened:** Clicking a state in the leaderboard set `selectedState` but didn't compute map zoom (only map clicks passed the `geo` object to compute zoom).
+**Correct approach:** Cache geo features in a ref during render. Use `useEffect` on `selectedState`/`drillLevel` to compute zoom from cached features, so both entry points produce identical zoom behavior.
+
+### 2026-04-09 - Tooltip colors didn't match parent sections
+**What happened:** InfoTip always used purple accent, even on green (orders), cyan (AOV), or orange (top state) cards.
+**Correct approach:** Added `color` prop to InfoTip. Each KPI card passes its color scheme. Gradient bar, label, and hover icon all match the parent section's accent color.
+
 ---
 
 ## Gotchas & Patterns
@@ -238,3 +261,14 @@ VITE_SUPABASE_ANON_KEY=[JWT token]
 - **Bubble/label scaling**: All visual sizes in state view must be divided by zoom level. Forgetting this makes elements huge on small states and tiny on large states.
 - **No retry logic**: RPC failures log to console but don't retry. If Supabase is down, user sees stale data or empty state.
 - **Loading vs empty**: Always show Spinner when loading. Only show "No data" after loading completes with empty results.
+- **InfoTip `light` prop**: Use `light` on dark/colored backgrounds (e.g., purple header bar). Makes icon purple-200 → white on hover instead of slate-500 → accent.
+- **Tooltip color matching**: Always pass the parent section's color to InfoTip so the accent bar matches. Purple for revenue, green for orders, cyan for AOV, orange for top state, amber for leaderboard.
+- **Miami exclusion is temporary**: All 5 RPCs have `AND NOT (UPPER(TRIM(shipping_city)) = 'MIAMI' AND order_created_date >= '2026-03-26')`. Remove when user instructs.
+
+## Security Audit (2026-04-09)
+
+Cross-app API key audit findings:
+- **GRID is clean** — uses `.env` with Supabase anon key only (publishable, fine for frontend)
+- **Never commit .env files with real secrets** — use `.env.example` pattern (GRID already does this correctly)
+- **3 keys to rotate across other repos**: OpenAI (CAGE), Anthropic (TARA), Supabase service role (TARA)
+- **Supabase anon keys in frontend are fine** — they're publishable by design, RLS protects data
