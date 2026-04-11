@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Map, Globe, BarChart3 } from 'lucide-react';
+import { Map, Globe, BarChart3, Database } from 'lucide-react';
 import { Sidebar } from './components/design-system/Sidebar/Sidebar.jsx';
 import { LoginPage } from './components/design-system/Auth/LoginPage.jsx';
 import { GeoMap } from './components/GeoMap.jsx';
@@ -9,6 +9,7 @@ import { TopCitiesChart } from './components/TopCitiesChart.jsx';
 import { DateRangePicker } from './components/DateRangePicker.jsx';
 import { Spinner } from './components/design-system/Loading/Spinner.jsx';
 import { InfoTip } from './components/InfoTip.jsx';
+import DataHealth from './components/DataHealth.jsx';
 import {
   fetchTotals,
   fetchStateRevenue,
@@ -34,6 +35,7 @@ const PASSWORDS = {
 function App() {
   // Auth
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [authError, setAuthError] = useState('');
 
   // Date range
@@ -49,6 +51,7 @@ function App() {
   const [drillLoading, setDrillLoading] = useState(false);
 
   // Navigation
+  const [currentPage, setCurrentPage] = useState('heatmap');
   const [selectedState, setSelectedState] = useState(null);
   const [drillLevel, setDrillLevel] = useState('us'); // 'us' | 'state'
 
@@ -61,6 +64,7 @@ function App() {
       const auth = JSON.parse(localStorage.getItem('grid-auth') || '{}');
       if (auth.authenticated && auth.timestamp && Date.now() - auth.timestamp < 24 * 60 * 60 * 1000) {
         setIsAuthenticated(true);
+        setIsAdmin(auth.role === 'admin');
       }
     } catch { /* ignore */ }
   }, []);
@@ -70,6 +74,7 @@ function App() {
     if (role) {
       localStorage.setItem('grid-auth', JSON.stringify({ authenticated: true, role, timestamp: Date.now() }));
       setIsAuthenticated(true);
+      setIsAdmin(role === 'admin');
       setAuthError('');
     } else {
       setAuthError('Invalid password');
@@ -79,6 +84,8 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('grid-auth');
     setIsAuthenticated(false);
+    setIsAdmin(false);
+    setCurrentPage('heatmap');
   };
 
   // Fetch US-level data when date range changes
@@ -154,6 +161,10 @@ function App() {
     setZipData([]);
   }, []);
 
+  const handleNavigate = useCallback((page) => {
+    setCurrentPage(page);
+  }, []);
+
   const navigationItems = [
     { isSection: true, id: 'section-analytics', label: 'Analytics' },
     { id: 'heatmap', label: 'US Heat Map', icon: Map },
@@ -180,12 +191,25 @@ function App() {
         tagline="Geographic Revenue Insights Dashboard"
         logoSrc="/logo.png"
         navigationItems={navigationItems}
-        activeItem="heatmap"
-        onNavigate={() => {}}
+        activeItem={currentPage}
+        onNavigate={handleNavigate}
         onLogout={handleLogout}
         isOpen={sidebarOpen}
         onOpen={() => setSidebarOpen(true)}
         onClose={() => setSidebarOpen(false)}
+        footerContent={isAdmin ? (
+          <button
+            onClick={() => handleNavigate('data-health')}
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              currentPage === 'data-health'
+                ? 'bg-gradient-to-r from-slate-700 to-slate-600 text-white border border-slate-500'
+                : 'bg-gradient-to-r from-slate-700 to-slate-600 text-white border border-slate-600 hover:border-slate-500'
+            }`}
+          >
+            <Database className="w-4 h-4" />
+            <span>Data Sources</span>
+          </button>
+        ) : null}
       />
 
       <div className="ml-0 lg:ml-64 min-h-screen relative overflow-hidden">
@@ -196,70 +220,85 @@ function App() {
         {/* Header bar */}
         <div className="h-12 bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-800 flex items-center px-6">
           <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4 text-purple-200" />
-            <span className="text-sm font-semibold text-white">
-              {drillLevel === 'state' && selectedState
-                ? `${STATE_ABBR_TO_NAME[selectedState] || selectedState} Heat Map`
-                : 'US Heat Map'}
-              <InfoTip
-                label="Heat Map"
-                text="Interactive choropleth showing US DTC revenue by geography. Darker states have higher revenue. Click any state to drill into city-level bubbles and zip code rankings."
-                light
-              />
-            </span>
+            {currentPage === 'data-health' ? (
+              <>
+                <Database className="w-4 h-4 text-purple-200" />
+                <span className="text-sm font-semibold text-white">Data Sources</span>
+              </>
+            ) : (
+              <>
+                <Globe className="w-4 h-4 text-purple-200" />
+                <span className="text-sm font-semibold text-white">
+                  {drillLevel === 'state' && selectedState
+                    ? `${STATE_ABBR_TO_NAME[selectedState] || selectedState} Heat Map`
+                    : 'US Heat Map'}
+                  <InfoTip
+                    label="Heat Map"
+                    text="Interactive choropleth showing US DTC revenue by geography. Darker states have higher revenue. Click any state to drill into city-level bubbles and zip code rankings."
+                    light
+                  />
+                </span>
+              </>
+            )}
           </div>
         </div>
 
         {/* Content */}
-        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6 relative z-10">
-          {/* Date picker */}
-          <div className="mb-6">
-            <DateRangePicker
-              selectedPreset={dateRange.preset}
-              from={dateRange.from}
-              to={dateRange.to}
-              onChange={handleDateChange}
-            />
+        {currentPage === 'data-health' && isAdmin ? (
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6 relative z-10">
+            <DataHealth />
           </div>
-
-          {/* KPI Cards */}
-          <div className="mb-6">
-            <KPICards totals={totals} topState={topState} loading={loading} />
-          </div>
-
-          {/* Map + Leaderboard */}
-          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <div className="xl:col-span-2">
-              <GeoMap
-                stateData={stateData}
-                cityData={cityData}
-                onStateClick={handleStateClick}
-                selectedState={selectedState}
-                onBack={handleBack}
-                drillLevel={drillLevel}
+        ) : (
+          <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 pb-8 pt-6 relative z-10">
+            {/* Date picker */}
+            <div className="mb-6">
+              <DateRangePicker
+                selectedPreset={dateRange.preset}
+                from={dateRange.from}
+                to={dateRange.to}
+                onChange={handleDateChange}
               />
             </div>
-            <div className="xl:col-span-1">
-              <Leaderboard
-                stateData={stateData}
-                cityData={cityData}
-                zipData={zipData}
-                selectedState={selectedState}
-                onStateClick={handleStateClick}
-                onBack={handleBack}
-                loading={drillLevel === 'us' ? loading : drillLoading}
-                drillLevel={drillLevel}
-              />
-            </div>
-          </div>
 
-          {/* Top Cities Chart */}
-          {drillLevel === 'us' && (
-            <div className="mt-6">
-              <TopCitiesChart data={topCities} loading={loading} />
+            {/* KPI Cards */}
+            <div className="mb-6">
+              <KPICards totals={totals} topState={topState} loading={loading} />
             </div>
-          )}
-        </div>
+
+            {/* Map + Leaderboard */}
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+              <div className="xl:col-span-2">
+                <GeoMap
+                  stateData={stateData}
+                  cityData={cityData}
+                  onStateClick={handleStateClick}
+                  selectedState={selectedState}
+                  onBack={handleBack}
+                  drillLevel={drillLevel}
+                />
+              </div>
+              <div className="xl:col-span-1">
+                <Leaderboard
+                  stateData={stateData}
+                  cityData={cityData}
+                  zipData={zipData}
+                  selectedState={selectedState}
+                  onStateClick={handleStateClick}
+                  onBack={handleBack}
+                  loading={drillLevel === 'us' ? loading : drillLoading}
+                  drillLevel={drillLevel}
+                />
+              </div>
+            </div>
+
+            {/* Top Cities Chart */}
+            {drillLevel === 'us' && (
+              <div className="mt-6">
+                <TopCitiesChart data={topCities} loading={loading} />
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
