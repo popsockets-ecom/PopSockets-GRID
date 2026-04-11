@@ -218,29 +218,21 @@ function App() {
         <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-violet-600/8 rounded-full blur-[100px] pointer-events-none" />
 
         {/* Header bar */}
-        <div className="h-12 bg-gradient-to-r from-purple-800 via-purple-700 to-indigo-800 flex items-center px-6">
-          <div className="flex items-center gap-2">
-            {currentPage === 'data-health' ? (
-              <>
-                <Database className="w-4 h-4 text-purple-200" />
-                <span className="text-sm font-semibold text-white">Data Sources</span>
-              </>
-            ) : (
-              <>
-                <Globe className="w-4 h-4 text-purple-200" />
-                <span className="text-sm font-semibold text-white">
-                  {drillLevel === 'state' && selectedState
-                    ? `${STATE_ABBR_TO_NAME[selectedState] || selectedState} Heat Map`
-                    : 'US Heat Map'}
-                  <InfoTip
-                    label="Heat Map"
-                    text="Interactive choropleth showing US DTC revenue by geography. Darker states have higher revenue. Click any state to drill into city-level bubbles and zip code rankings."
-                    light
-                  />
-                </span>
-              </>
-            )}
-          </div>
+        <div className="h-14 bg-gradient-to-r from-slate-800 via-purple-800 to-blue-800 border-b border-slate-600/50 flex items-center pl-14 pr-4 sm:px-6">
+          <h1 className="text-xl font-bold text-white leading-none">
+            {currentPage === 'data-health'
+              ? 'Data Sources'
+              : drillLevel === 'state' && selectedState
+                ? `${STATE_ABBR_TO_NAME[selectedState] || selectedState} Heat Map`
+                : 'US Heat Map'}
+          </h1>
+          {currentPage !== 'data-health' && (
+            <InfoTip
+              label="Heat Map"
+              text="Interactive choropleth showing US DTC revenue by geography. Darker states have higher revenue. Click any state to drill into city-level bubbles and zip code rankings."
+              light
+            />
+          )}
         </div>
 
         {/* Content */}
