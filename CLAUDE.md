@@ -13,9 +13,9 @@
 
 ---
 
-## Current State (Last Updated: 2026-04-09)
+## Current State (Last Updated: 2026-04-10)
 
-**Working on:** Polish pass complete. Miami exclusion active.
+**Working on:** Session complete. Data Sources page added, logo updated, header redesigned.
 **Branch:** main
 **Status:** Live at https://popsockets-grid.vercel.app. Added to PIT portal.
 **Next steps:**
@@ -23,6 +23,16 @@
 - [ ] DMA mapping (requires 43K-row zip-to-DMA lookup table)
 - [ ] Rotate 3 exposed API keys (OpenAI in CAGE, Anthropic in TARA, Supabase service role in TARA)
 - [ ] Remove Miami exclusion when instructed by user
+
+**What was done (2026-04-10 evening):**
+- **Data Sources page added** (`DataHealth.jsx`): Admin-only page showing pipeline health for the `orders` table. Uses shared `get_data_freshness()` and `get_data_quality()` RPCs from Supabase. Summary banner shows overall health status. Source card shows freshness (Current/Behind/Stale), quality indicator (yesterday vs 7-day avg), sync schedule, row count. Matches CORE/PAIR/PATH pattern exactly.
+- **Admin auth implemented**: `ADMIN` password now sets `isAdmin` state (read from `role` field in localStorage `grid-auth` JSON). Data Sources footer button only appears for admin logins. BEBOLD users see no Data Sources access.
+- **Navigation wiring**: `currentPage` state switches between `'heatmap'` and `'data-health'`. Sidebar `footerContent` prop passes admin-only Data Sources button (Database icon). Header bar title updates dynamically per page.
+- **Logo updated**: Replaced with higher-resolution version (899x875 source, saved as 512x512). White background removed via Python flood-fill (Pillow). Transparent PNG blends cleanly with dark sidebar.
+- **Sidebar logo sizing**: Reduced from `w-16 h-16` (64px) to `w-10 h-10` (40px) in SidebarHeader.jsx. Previous size was too large and crowded the header area.
+- **Header bar redesigned to match PATH**: Changed from `h-12` with `text-sm` to `h-14` with `text-xl font-bold`. Gradient updated from `from-purple-800 via-purple-700 to-indigo-800` to `from-slate-800 via-purple-800 to-blue-800` (matching PATH's PageHeader gradient variant). Added `border-b border-slate-600/50`. Removed icon prefixes on page titles (just bold text now).
+- **"Analytics" section label removed** from sidebar navigation. Only "US Heat Map" nav item remains (cleaner look).
+- **InfoTip spacing improved**: Icon margin increased from `ml-1` to `ml-2`, icon size from `w-3 h-3` to `w-3.5 h-3.5`. Less cramped next to the bold header title.
 
 **Active data filters:**
 - **Miami exclusion**: All 5 RPCs exclude Miami orders from 2026-03-26 onward. Temporary filter, remove when user says so. Applied via migration `exclude_miami_orders_from_march_26` (then adjusted to 24th, then reverted to 26th via `revert_miami_exclusion_to_march_26`).
@@ -51,6 +61,7 @@ Core features:
 - Top 50 cities horizontal bar chart (US view only)
 - Date range picker with presets (Last 30d, 90d, YTD, Last Year, All Time)
 - Default date range: YTD (Jan 1 to today, Mountain Time)
+- Data Sources page (admin-only): pipeline health for orders table
 
 ## Tech Stack
 
@@ -83,12 +94,13 @@ Deploy: Push to GitHub main branch. Vercel auto-deploys.
 
 | File | Purpose | Notes |
 |------|---------|-------|
-| `src/App.jsx` | Main component, state orchestration | Auth, date range, data fetching, drill-down |
+| `src/App.jsx` | Main component, state orchestration | Auth, date range, data fetching, drill-down, page routing |
 | `src/components/GeoMap.jsx` | Choropleth map + city bubbles | d3-geo auto-zoom, log color scale |
 | `src/components/KPICards.jsx` | 4 metric cards | Matches PATH StatCard pattern, color-matched tooltips |
 | `src/components/Leaderboard.jsx` | Ranked list (states or cities/zips) | Tabbed in state view, amber tooltip |
 | `src/components/TopCitiesChart.jsx` | Top 50 cities bar chart | Revenue-intensity coloring, purple tooltip |
-| `src/components/InfoTip.jsx` | Portal-based info tooltips | Color-matched accent bar, matches TikTok Performance style |
+| `src/components/DataHealth.jsx` | Data Sources page (admin-only) | Pipeline freshness/quality for orders table |
+| `src/components/InfoTip.jsx` | Portal-based info tooltips | Color-matched accent bar, ml-2 spacing, w-3.5 icon |
 | `src/components/DateRangePicker.jsx` | Date inputs + presets | Mountain Time boundaries |
 | `src/services/geoDataService.js` | All Supabase RPC calls | 5 functions + state mappings |
 | `src/data/cityCoords.js` | ~300 US city coordinates | [lng, lat] for bubble placement |
@@ -99,15 +111,16 @@ Deploy: Push to GitHub main branch. Vercel auto-deploys.
 
 | Component | Location | Notes |
 |-----------|----------|-------|
-| Sidebar | `src/components/design-system/Sidebar/` | 256px fixed, mobile collapsible |
-| LoginPage | `src/components/design-system/Auth/` | Password form |
+| Sidebar | `src/components/design-system/Sidebar/` | 256px fixed, mobile collapsible, supports footerContent prop |
+| LoginPage | `src/components/design-system/Auth/` | Password form, VOICE design pattern |
 | Spinner | `src/components/design-system/Loading/` | sm/md/lg/xl, purple/white/slate |
+| SidebarHeader | `src/components/design-system/Sidebar/SidebarHeader.jsx` | Logo w-10 h-10, rounded-lg |
 
 ## Data Architecture
 
-### Supabase RPCs (5 total)
+### Supabase RPCs (5 geo RPCs + 2 shared)
 
-All RPCs filter to `dtc_channel = 'US DTC'` and use `normalize_us_state()` for US-only state mapping.
+All geo RPCs filter to `dtc_channel = 'US DTC'` and use `normalize_us_state()` for US-only state mapping.
 
 | RPC | Params | Returns | Used By |
 |-----|--------|---------|---------|
@@ -116,6 +129,8 @@ All RPCs filter to `dtc_channel = 'US DTC'` and use `normalize_us_state()` for U
 | `get_geo_revenue_by_city` | `p_from`, `p_to`, `p_state` | Top 200 cities: city, state, revenue, order_count, avg_order_value | GeoMap bubbles + Leaderboard cities tab |
 | `get_geo_revenue_by_zip` | `p_from`, `p_to`, `p_state` | Top 200 zips: zip, city, state, revenue, order_count | Leaderboard zips tab |
 | `get_geo_top_cities` | `p_from`, `p_to`, `p_limit` | Top N cities nationwide: city, state, revenue, order_count | TopCitiesChart |
+| `get_data_freshness` | (none) | All tracked tables: source_name, latest_date, row_count | DataHealth |
+| `get_data_quality` | (none) | Quality metrics: source_name, yesterday_value, avg_7d, missing_days | DataHealth |
 
 ### SQL Functions
 
@@ -141,12 +156,21 @@ Snowflake ORDERS table
 
 ## Authentication
 
-| Password | Role | Storage Key |
-|----------|------|-------------|
-| BEBOLD | user | `grid-auth` |
-| ADMIN | admin | `grid-auth` |
+| Password | Role | Storage Key | Data Sources Access |
+|----------|------|-------------|---------------------|
+| BEBOLD | user | `grid-auth` | No |
+| ADMIN | admin | `grid-auth` | Yes |
 
-Storage: `localStorage` (not sessionStorage). 24-hour session expiry.
+Storage: `localStorage` (not sessionStorage). 24-hour session expiry. Auth JSON stores `{ authenticated, role, timestamp }`. Admin state derived from `role === 'admin'`.
+
+## Page Routing
+
+| Page ID | View | Access | Header Title |
+|---------|------|--------|--------------|
+| `heatmap` | US Heat Map (default) | All users | "US Heat Map" (or state name when drilled) |
+| `data-health` | Data Sources | Admin only | "Data Sources" |
+
+Navigation: `currentPage` state. Sidebar nav items for main views, `footerContent` button for Data Sources (admin-gated).
 
 ## Map Implementation Details
 
@@ -175,6 +199,16 @@ Storage: `localStorage` (not sessionStorage). 24-hour session expiry.
 - Resets to `[-96, 38]` center, zoom 1
 - Tracks position via `onMoveEnd` callback on ZoomableGroup
 
+## Header Bar Design
+
+Matches PATH's `PageHeader` gradient variant:
+- Height: `h-14` (56px)
+- Gradient: `from-slate-800 via-purple-800 to-blue-800`
+- Border: `border-b border-slate-600/50`
+- Title: `text-xl font-bold text-white leading-none`
+- Padding: `pl-14 pr-4 sm:px-6` (extra left padding for mobile hamburger)
+- No icon prefix on page titles (clean bold text only)
+
 ## Environment Variables
 
 ```
@@ -189,6 +223,13 @@ VITE_SUPABASE_ANON_KEY=[JWT token]
 - **GitHub**: popsockets-ecom/PopSockets-GRID
 - **Auto-deploy**: Push to main
 - **SPA rewrite**: `vercel.json` rewrites all routes to `/index.html`
+
+## Logo
+
+- **Source**: `public/logo.png` (512x512, transparent background)
+- **Processing**: White background removed via Python Pillow flood-fill from corners
+- **Sidebar display**: `w-10 h-10 rounded-lg` in SidebarHeader.jsx (was `w-16 h-16`, reduced to avoid crowding)
+- **Login page**: Displayed via LoginPage component's `logoSrc` prop
 
 ## Known Revenue Gaps vs PATH
 
@@ -221,6 +262,18 @@ VITE_SUPABASE_ANON_KEY=[JWT token]
 ---
 
 ## Mistakes & Learnings
+
+### 2026-04-10 - SidebarHeader logo was too large (64px)
+**What happened:** New high-res logo at `w-16 h-16` (64px) crowded the sidebar header, making the app name and tagline feel cramped.
+**Correct approach:** Reduced to `w-10 h-10` (40px) with `rounded-lg` to match the fallback icon size. The sidebar header has limited vertical space, logos over 40px crowd the text.
+
+### 2026-04-10 - Header bar didn't match PATH's PageHeader design
+**What happened:** GRID used `h-12` with `text-sm font-semibold` and icon prefixes on titles. PATH uses `h-14` with `text-xl font-bold` and no icon prefixes. The difference was visually jarring when switching between apps.
+**Correct approach:** Match PATH's PageHeader gradient variant exactly: `h-14`, `text-xl font-bold`, gradient `from-slate-800 via-purple-800 to-blue-800`, `border-b border-slate-600/50`. No icon before page titles.
+
+### 2026-04-10 - Logo PNG had white background visible on dark sidebar
+**What happened:** The original logo had an opaque white background. Against the dark slate-800 sidebar, it appeared as a white square.
+**Correct approach:** Use Python Pillow flood-fill from corners to make white background transparent. Save as PNG with alpha channel. Always verify logos render correctly against dark backgrounds before committing.
 
 ### 2026-04-08 - Revenue included all channels, not just US DTC
 **What happened:** GRID showed $5.47M YTD while PATH showed $5.36M. Investigation revealed GRID was including TikTok ($126K), Global-E ($17K), and z_validate ($3K) orders shipping to US addresses.
@@ -261,9 +314,13 @@ VITE_SUPABASE_ANON_KEY=[JWT token]
 - **Bubble/label scaling**: All visual sizes in state view must be divided by zoom level. Forgetting this makes elements huge on small states and tiny on large states.
 - **No retry logic**: RPC failures log to console but don't retry. If Supabase is down, user sees stale data or empty state.
 - **Loading vs empty**: Always show Spinner when loading. Only show "No data" after loading completes with empty results.
-- **InfoTip `light` prop**: Use `light` on dark/colored backgrounds (e.g., purple header bar). Makes icon purple-200 → white on hover instead of slate-500 → accent.
+- **InfoTip `light` prop**: Use `light` on dark/colored backgrounds (e.g., header bar). Makes icon purple-200/60 → white on hover instead of slate-500 → accent.
+- **InfoTip spacing**: `ml-2` margin and `w-3.5 h-3.5` icon size. Avoids cramped look next to bold titles.
 - **Tooltip color matching**: Always pass the parent section's color to InfoTip so the accent bar matches. Purple for revenue, green for orders, cyan for AOV, orange for top state, amber for leaderboard.
 - **Miami exclusion is temporary**: All 5 RPCs have `AND NOT (UPPER(TRIM(shipping_city)) = 'MIAMI' AND order_created_date >= '2026-03-26')`. Remove when user instructs.
+- **localStorage not sessionStorage**: GRID uses localStorage for auth (unique among PopSockets apps). JSON stores `{ authenticated, role, timestamp }` under key `grid-auth`. Admin state derived from `role === 'admin'`.
+- **No section labels in sidebar nav**: The "Analytics" label was removed. Just list nav items directly.
+- **Data Sources is admin-only**: Passed via `footerContent` prop to Sidebar, gated by `isAdmin`. Not in the main nav items array.
 
 ## Security Audit (2026-04-09)
 
