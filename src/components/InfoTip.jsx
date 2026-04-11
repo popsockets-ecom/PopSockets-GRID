@@ -29,11 +29,11 @@ export function InfoTip({ text, label, color = 'purple', light = false }) {
     <>
       <span
         ref={iconRef}
-        className="inline-flex ml-1 align-middle"
+        className="inline-flex ml-2 align-middle"
         onMouseEnter={handleEnter}
         onMouseLeave={() => setShow(false)}
       >
-        <Info className={`w-3 h-3 cursor-help transition-colors ${light ? 'text-purple-200/60 hover:text-white' : `text-slate-500 ${scheme.hover}`}`} />
+        <Info className={`w-3.5 h-3.5 cursor-help transition-colors ${light ? 'text-purple-200/60 hover:text-white' : `text-slate-500 ${scheme.hover}`}`} />
       </span>
       {show && createPortal(
         <div

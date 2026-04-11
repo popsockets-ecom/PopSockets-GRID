@@ -166,7 +166,6 @@ function App() {
   }, []);
 
   const navigationItems = [
-    { isSection: true, id: 'section-analytics', label: 'Analytics' },
     { id: 'heatmap', label: 'US Heat Map', icon: Map },
   ];
 
