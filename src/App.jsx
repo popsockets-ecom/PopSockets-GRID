@@ -18,6 +18,7 @@ import {
   fetchTopCities,
   STATE_ABBR_TO_NAME,
 } from './services/geoDataService.js';
+import { fetchPitPasswords, getFallbackPitPasswords } from './lib/pitPasswords.js';
 
 function getDefaultDates() {
   const mtOffset = 7 * 60 * 60 * 1000;
@@ -27,16 +28,20 @@ function getDefaultDates() {
   return { from: yearStart, to: today, preset: 'ytd' };
 }
 
-const PASSWORDS = {
-  BEBOLD: 'user',
-  ADMIN: 'admin',
-};
-
 function App() {
   // Auth
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [pitPasswords, setPitPasswords] = useState(() => getFallbackPitPasswords());
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchPitPasswords().then((rows) => {
+      if (!cancelled) setPitPasswords(rows);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Date range
   const [dateRange, setDateRange] = useState(getDefaultDates);
@@ -70,7 +75,8 @@ function App() {
   }, []);
 
   const handleLogin = (password) => {
-    const role = PASSWORDS[password.toUpperCase()];
+    const match = pitPasswords.find((p) => p.password === password.toUpperCase());
+    const role = match?.role;
     if (role) {
       localStorage.setItem('grid-auth', JSON.stringify({ authenticated: true, role, timestamp: Date.now() }));
       setIsAuthenticated(true);
