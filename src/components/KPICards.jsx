@@ -38,33 +38,63 @@ function KPICard({ label, value, icon: Icon, color, loading, tooltip }) {
   );
 }
 
-export function KPICards({ totals, topState, loading }) {
+export function KPICards({ totals, topState, loading, selectedState, stateData, cityData, drillLoading }) {
+  const isStateView = Boolean(selectedState);
+  const selectedRow = isStateView
+    ? stateData?.find((r) => r.state === selectedState)
+    : null;
+  const topCity = isStateView ? cityData?.[0] : null;
+
+  const revenueValue = isStateView ? selectedRow?.revenue : totals?.total_revenue;
+  const ordersValue = isStateView ? selectedRow?.order_count : totals?.total_orders;
+
+  const stateName = selectedState ? (STATE_ABBR_TO_NAME[selectedState] || selectedState) : '';
+
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <KPICard
-        label="Total Revenue"
-        value={fmtDollar(totals?.total_revenue)}
+        label={isStateView ? `${stateName} Revenue` : 'Total Revenue'}
+        value={fmtDollar(revenueValue)}
         icon={DollarSign}
         color="purple"
         loading={loading}
-        tooltip="Total net product revenue from US DTC orders shipped to valid US addresses for the selected date range."
+        tooltip={
+          isStateView
+            ? `Total net product revenue from US DTC orders shipped to ${stateName} for the selected date range.`
+            : 'Total net product revenue from US DTC orders shipped to valid US addresses for the selected date range.'
+        }
       />
       <KPICard
-        label="Total Orders"
-        value={fmtNumber(totals?.total_orders)}
+        label={isStateView ? `${stateName} Orders` : 'Total Orders'}
+        value={fmtNumber(ordersValue)}
         icon={ShoppingCart}
         color="green"
         loading={loading}
-        tooltip="Count of unique US DTC orders shipped to US addresses. Each order number is counted once regardless of line items."
+        tooltip={
+          isStateView
+            ? `Count of unique US DTC orders shipped to ${stateName}. Each order number is counted once regardless of line items.`
+            : 'Count of unique US DTC orders shipped to US addresses. Each order number is counted once regardless of line items.'
+        }
       />
-      <KPICard
-        label="Top State"
-        value={topState ? (STATE_ABBR_TO_NAME[topState.state] || topState.state) : '--'}
-        icon={MapPin}
-        color="orange"
-        loading={loading}
-        tooltip="The state with the highest total revenue for the selected date range."
-      />
+      {isStateView ? (
+        <KPICard
+          label="Top City"
+          value={topCity ? topCity.city : '--'}
+          icon={MapPin}
+          color="orange"
+          loading={drillLoading}
+          tooltip={`The city in ${stateName} with the highest total revenue for the selected date range.`}
+        />
+      ) : (
+        <KPICard
+          label="Top State"
+          value={topState ? (STATE_ABBR_TO_NAME[topState.state] || topState.state) : '--'}
+          icon={MapPin}
+          color="orange"
+          loading={loading}
+          tooltip="The state with the highest total revenue for the selected date range."
+        />
+      )}
     </div>
   );
 }

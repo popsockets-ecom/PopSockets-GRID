@@ -259,7 +259,15 @@ function App() {
 
             {/* KPI Cards */}
             <div className="mb-6">
-              <KPICards totals={totals} topState={topState} loading={loading} />
+              <KPICards
+                totals={totals}
+                topState={topState}
+                loading={loading}
+                selectedState={selectedState}
+                stateData={stateData}
+                cityData={cityData}
+                drillLoading={drillLoading}
+              />
             </div>
 
             {/* Map + Leaderboard */}

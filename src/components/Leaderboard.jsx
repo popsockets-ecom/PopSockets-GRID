@@ -1,9 +1,48 @@
 import React, { useState } from 'react';
 import { ChevronRight, ArrowLeft, Trophy, MapPin, Building2, Hash } from 'lucide-react';
-import { fmtDollar, fmtNumber, fmtDollarExact } from '../utils/formatters.js';
+import { fmtDollar, fmtNumber } from '../utils/formatters.js';
 import { STATE_ABBR_TO_NAME } from '../services/geoDataService.js';
 import { Spinner } from './design-system/Loading/Spinner.jsx';
 import { InfoTip } from './InfoTip.jsx';
+
+function MetricToggle({ metric, onChange }) {
+  return (
+    <div className="flex gap-1 bg-slate-700/40 rounded-lg p-0.5">
+      <button
+        onClick={() => onChange('revenue')}
+        className={`px-2.5 py-1 rounded text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+          metric === 'revenue' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+        }`}
+      >
+        Revenue
+      </button>
+      <button
+        onClick={() => onChange('aov')}
+        className={`px-2.5 py-1 rounded text-[10px] font-semibold uppercase tracking-wide transition-colors ${
+          metric === 'aov' ? 'bg-purple-600 text-white' : 'text-slate-400 hover:text-white'
+        }`}
+      >
+        AOV
+      </button>
+    </div>
+  );
+}
+
+function computeAov(row) {
+  if (row.avg_order_value != null) return row.avg_order_value;
+  if (row.order_count > 0) return row.revenue / row.order_count;
+  return 0;
+}
+
+function sortByMetric(rows, metric) {
+  const copy = [...rows];
+  if (metric === 'aov') {
+    copy.sort((a, b) => computeAov(b) - computeAov(a));
+  } else {
+    copy.sort((a, b) => (b.revenue || 0) - (a.revenue || 0));
+  }
+  return copy;
+}
 
 const MEDALS = ['bg-amber-500/20 text-amber-400 border-amber-500/30', 'bg-slate-400/20 text-slate-300 border-slate-400/30', 'bg-orange-600/20 text-orange-400 border-orange-600/30'];
 
@@ -16,8 +55,8 @@ function RankBadge({ rank }) {
   );
 }
 
-function LeaderboardRow({ rank, name, revenue, orders, maxRevenue, onClick, isSelected }) {
-  const pct = maxRevenue > 0 ? (revenue / maxRevenue) * 100 : 0;
+function LeaderboardRow({ rank, name, primaryValue, barMax, orders, onClick, isSelected }) {
+  const pct = barMax > 0 ? (primaryValue / barMax) * 100 : 0;
   return (
     <button
       onClick={onClick}
@@ -31,7 +70,7 @@ function LeaderboardRow({ rank, name, revenue, orders, maxRevenue, onClick, isSe
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between mb-1">
           <span className="text-sm font-medium text-white truncate">{name}</span>
-          <span className="text-sm font-bold text-purple-300 ml-2 flex-shrink-0">{fmtDollar(revenue)}</span>
+          <span className="text-sm font-bold text-purple-300 ml-2 flex-shrink-0">{fmtDollar(primaryValue)}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="flex-1 h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
@@ -61,35 +100,40 @@ export function Leaderboard({
   drillLevel,
 }) {
   const [tab, setTab] = useState('cities');
+  const [metric, setMetric] = useState('revenue');
 
   // State-level view
   if (drillLevel === 'us') {
-    const maxRev = stateData[0]?.revenue || 1;
+    const sortedStates = sortByMetric(stateData, metric);
+    const barMax = sortedStates[0] ? (metric === 'aov' ? computeAov(sortedStates[0]) : sortedStates[0].revenue) : 1;
     return (
       <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 backdrop-blur-sm overflow-hidden">
         <div className="px-4 py-3 border-b border-slate-700/50">
-          <div className="flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-amber-400" />
-            <h3 className="text-sm font-semibold text-white">
-              Top States by Revenue
-              <InfoTip label="Leaderboard" text="Top 25 US states ranked by net product revenue. Click any state to drill down into its cities and zip codes on the map." color="amber" />
-            </h3>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Trophy className="w-4 h-4 text-amber-400 flex-shrink-0" />
+              <h3 className="text-sm font-semibold text-white truncate">
+                Top States by {metric === 'aov' ? 'AOV' : 'Revenue'}
+                <InfoTip label="Leaderboard" text="Top 25 US states ranked by the selected metric. Toggle between total revenue and average order value. Click any state to drill into its cities and zip codes." color="amber" />
+              </h3>
+            </div>
+            <MetricToggle metric={metric} onChange={setMetric} />
           </div>
         </div>
         <div className="p-2 max-h-[500px] overflow-y-auto scrollbar-thin">
           {loading ? (
             <div className="flex justify-center py-8"><Spinner size="md" color="purple" /></div>
-          ) : stateData.length === 0 ? (
+          ) : sortedStates.length === 0 ? (
             <div className="text-sm text-slate-500 italic text-center py-8">No data for this period</div>
           ) : (
-            stateData.slice(0, 25).map((d, i) => (
+            sortedStates.slice(0, 25).map((d, i) => (
               <LeaderboardRow
                 key={d.state}
                 rank={i + 1}
                 name={STATE_ABBR_TO_NAME[d.state] || d.state}
-                revenue={d.revenue}
+                primaryValue={metric === 'aov' ? computeAov(d) : d.revenue}
+                barMax={barMax}
                 orders={d.order_count}
-                maxRevenue={maxRev}
                 onClick={() => onStateClick?.(d.state)}
                 isSelected={selectedState === d.state}
               />
@@ -102,8 +146,9 @@ export function Leaderboard({
 
   // State drill-down view (cities + zips)
   const stateName = STATE_ABBR_TO_NAME[selectedState] || selectedState;
-  const displayData = tab === 'cities' ? cityData : zipData;
-  const maxRev = displayData[0]?.revenue || 1;
+  const rawData = tab === 'cities' ? cityData : zipData;
+  const sortedData = sortByMetric(rawData, metric);
+  const barMax = sortedData[0] ? (metric === 'aov' ? computeAov(sortedData[0]) : sortedData[0].revenue) : 1;
 
   return (
     <div className="bg-slate-800/50 rounded-xl border border-slate-700/50 backdrop-blur-sm overflow-hidden">
@@ -119,42 +164,45 @@ export function Leaderboard({
           <MapPin className="w-4 h-4 text-purple-400" />
           <h3 className="text-sm font-semibold text-white">{stateName}</h3>
         </div>
-        {/* Tabs */}
-        <div className="flex gap-1 mt-2">
-          <button
-            onClick={() => setTab('cities')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              tab === 'cities' ? 'bg-purple-600 text-white' : 'bg-slate-700/50 text-slate-400 hover:text-white'
-            }`}
-          >
-            <Building2 className="w-3.5 h-3.5" />
-            Cities
-          </button>
-          <button
-            onClick={() => setTab('zips')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-              tab === 'zips' ? 'bg-purple-600 text-white' : 'bg-slate-700/50 text-slate-400 hover:text-white'
-            }`}
-          >
-            <Hash className="w-3.5 h-3.5" />
-            Zip Codes
-          </button>
+        {/* Tabs + metric toggle */}
+        <div className="flex items-center justify-between gap-2 mt-2">
+          <div className="flex gap-1">
+            <button
+              onClick={() => setTab('cities')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                tab === 'cities' ? 'bg-purple-600 text-white' : 'bg-slate-700/50 text-slate-400 hover:text-white'
+              }`}
+            >
+              <Building2 className="w-3.5 h-3.5" />
+              Cities
+            </button>
+            <button
+              onClick={() => setTab('zips')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                tab === 'zips' ? 'bg-purple-600 text-white' : 'bg-slate-700/50 text-slate-400 hover:text-white'
+              }`}
+            >
+              <Hash className="w-3.5 h-3.5" />
+              Zip Codes
+            </button>
+          </div>
+          <MetricToggle metric={metric} onChange={setMetric} />
         </div>
       </div>
       <div className="p-2 max-h-[440px] overflow-y-auto scrollbar-thin">
         {loading ? (
           <div className="flex justify-center py-8"><Spinner size="md" color="purple" /></div>
-        ) : displayData.length === 0 ? (
+        ) : sortedData.length === 0 ? (
           <div className="text-sm text-slate-500 italic text-center py-8">No data for this period</div>
         ) : (
-          displayData.slice(0, 50).map((d, i) => (
+          sortedData.slice(0, 50).map((d, i) => (
             <LeaderboardRow
               key={tab === 'cities' ? `${d.city}-${d.state}` : `${d.zip}-${d.state}`}
               rank={i + 1}
               name={tab === 'cities' ? d.city : `${d.zip} (${d.city || ''})`}
-              revenue={d.revenue}
+              primaryValue={metric === 'aov' ? computeAov(d) : d.revenue}
+              barMax={barMax}
               orders={d.order_count}
-              maxRevenue={maxRev}
             />
           ))
         )}
