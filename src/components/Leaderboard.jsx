@@ -113,8 +113,8 @@ export function Leaderboard({
             <div className="flex items-center gap-2 min-w-0">
               <Trophy className="w-4 h-4 text-amber-400 flex-shrink-0" />
               <h3 className="text-sm font-semibold text-white truncate">
-                Top States by {metric === 'aov' ? 'AOV' : 'Revenue'}
-                <InfoTip label="Leaderboard" text="Top 25 US states ranked by the selected metric. Toggle between total revenue and average order value. Click any state to drill into its cities and zip codes." color="amber" />
+                States by {metric === 'aov' ? 'AOV' : 'Revenue'}
+                <InfoTip label="Leaderboard" text="All US states ranked by the selected metric. Toggle between total revenue and average order value. Click any state to drill into its cities and zip codes." color="amber" />
               </h3>
             </div>
             <MetricToggle metric={metric} onChange={setMetric} />
@@ -126,7 +126,7 @@ export function Leaderboard({
           ) : sortedStates.length === 0 ? (
             <div className="text-sm text-slate-500 italic text-center py-8">No data for this period</div>
           ) : (
-            sortedStates.slice(0, 25).map((d, i) => (
+            sortedStates.map((d, i) => (
               <LeaderboardRow
                 key={d.state}
                 rank={i + 1}

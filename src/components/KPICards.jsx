@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, ShoppingCart, MapPin } from 'lucide-react';
+import { DollarSign, ShoppingCart, TrendingUp, MapPin } from 'lucide-react';
 import { fmtDollar, fmtNumber } from '../utils/formatters.js';
 import { STATE_ABBR_TO_NAME } from '../services/geoDataService.js';
 import { Spinner } from './design-system/Loading/Spinner.jsx';
@@ -47,11 +47,12 @@ export function KPICards({ totals, topState, loading, selectedState, stateData, 
 
   const revenueValue = isStateView ? selectedRow?.revenue : totals?.total_revenue;
   const ordersValue = isStateView ? selectedRow?.order_count : totals?.total_orders;
+  const aovValue = isStateView ? selectedRow?.avg_order_value : totals?.avg_order_value;
 
   const stateName = selectedState ? (STATE_ABBR_TO_NAME[selectedState] || selectedState) : '';
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+    <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
       <KPICard
         label={isStateView ? `${stateName} Revenue` : 'Total Revenue'}
         value={fmtDollar(revenueValue)}
@@ -74,6 +75,18 @@ export function KPICards({ totals, topState, loading, selectedState, stateData, 
           isStateView
             ? `Count of unique US DTC orders shipped to ${stateName}. Each order number is counted once regardless of line items.`
             : 'Count of unique US DTC orders shipped to US addresses. Each order number is counted once regardless of line items.'
+        }
+      />
+      <KPICard
+        label={isStateView ? `${stateName} AOV` : 'Avg Order Value'}
+        value={fmtDollar(aovValue)}
+        icon={TrendingUp}
+        color="cyan"
+        loading={loading}
+        tooltip={
+          isStateView
+            ? `Average revenue per order for US DTC orders shipped to ${stateName}. Calculated as revenue divided by orders.`
+            : 'Average revenue per order. Calculated as Total Revenue divided by Total Orders.'
         }
       />
       {isStateView ? (
