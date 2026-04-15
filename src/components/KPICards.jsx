@@ -1,5 +1,5 @@
 import React from 'react';
-import { DollarSign, ShoppingCart, TrendingUp, MapPin } from 'lucide-react';
+import { DollarSign, ShoppingCart, MapPin } from 'lucide-react';
 import { fmtDollar, fmtNumber } from '../utils/formatters.js';
 import { STATE_ABBR_TO_NAME } from '../services/geoDataService.js';
 import { Spinner } from './design-system/Loading/Spinner.jsx';
@@ -40,7 +40,7 @@ function KPICard({ label, value, icon: Icon, color, loading, tooltip }) {
 
 export function KPICards({ totals, topState, loading }) {
   return (
-    <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
       <KPICard
         label="Total Revenue"
         value={fmtDollar(totals?.total_revenue)}
@@ -56,14 +56,6 @@ export function KPICards({ totals, topState, loading }) {
         color="green"
         loading={loading}
         tooltip="Count of unique US DTC orders shipped to US addresses. Each order number is counted once regardless of line items."
-      />
-      <KPICard
-        label="Avg Order Value"
-        value={fmtDollar(totals?.avg_order_value)}
-        icon={TrendingUp}
-        color="cyan"
-        loading={loading}
-        tooltip="Average revenue per order. Calculated as Total Revenue divided by Total Orders."
       />
       <KPICard
         label="Top State"
