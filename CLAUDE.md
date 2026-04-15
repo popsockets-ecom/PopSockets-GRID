@@ -13,26 +13,23 @@
 
 ---
 
-## Current State (Last Updated: 2026-04-10)
+## Current State (Last Updated: 2026-04-15)
 
-**Working on:** Session complete. Data Sources page added, logo updated, header redesigned.
+**Working on:** Session complete. Drill-aware KPI cards, Revenue/AOV toggle on leaderboard, all-states rendering.
 **Branch:** main
-**Status:** Live at https://popsockets-grid.vercel.app. Added to PIT portal.
+**Status:** Live at https://popsockets-grid.vercel.app. Last commit `1581e63`.
 **Next steps:**
 - [ ] Investigate Snowflake orders table for `order_status` column to exclude cancellations
 - [ ] DMA mapping (requires 43K-row zip-to-DMA lookup table)
 - [ ] Rotate 3 exposed API keys (OpenAI in CAGE, Anthropic in TARA, Supabase service role in TARA)
 - [ ] Remove Miami exclusion when instructed by user
 
-**What was done (2026-04-10 evening):**
-- **Data Sources page added** (`DataHealth.jsx`): Admin-only page showing pipeline health for the `orders` table. Uses shared `get_data_freshness()` and `get_data_quality()` RPCs from Supabase. Summary banner shows overall health status. Source card shows freshness (Current/Behind/Stale), quality indicator (yesterday vs 7-day avg), sync schedule, row count. Matches CORE/PAIR/PATH pattern exactly.
-- **Admin auth implemented**: `ADMIN` password now sets `isAdmin` state (read from `role` field in localStorage `grid-auth` JSON). Data Sources footer button only appears for admin logins. BEBOLD users see no Data Sources access.
-- **Navigation wiring**: `currentPage` state switches between `'heatmap'` and `'data-health'`. Sidebar `footerContent` prop passes admin-only Data Sources button (Database icon). Header bar title updates dynamically per page.
-- **Logo updated**: Replaced with higher-resolution version (899x875 source, saved as 512x512). White background removed via Python flood-fill (Pillow). Transparent PNG blends cleanly with dark sidebar.
-- **Sidebar logo sizing**: Reduced from `w-16 h-16` (64px) to `w-10 h-10` (40px) in SidebarHeader.jsx. Previous size was too large and crowded the header area.
-- **Header bar redesigned to match PATH**: Changed from `h-12` with `text-sm` to `h-14` with `text-xl font-bold`. Gradient updated from `from-purple-800 via-purple-700 to-indigo-800` to `from-slate-800 via-purple-800 to-blue-800` (matching PATH's PageHeader gradient variant). Added `border-b border-slate-600/50`. Removed icon prefixes on page titles (just bold text now).
-- **"Analytics" section label removed** from sidebar navigation. Only "US Heat Map" nav item remains (cleaner look).
-- **InfoTip spacing improved**: Icon margin increased from `ml-1` to `ml-2`, icon size from `w-3 h-3` to `w-3.5 h-3.5`. Less cramped next to the bold header title.
+**What was done (2026-04-14 → 2026-04-15):**
+- **KPI cards are now drill-aware** (`KPICards.jsx`): previously always showed US totals regardless of selected state. Now accepts `selectedState`, `stateData`, `cityData`, `drillLoading` props. When a state is selected, Revenue/Orders/AOV read from that state's row in `stateData`, and the "Top State" card becomes a "Top City" card sourced from `cityData[0]`. Labels prefix the state name (e.g., "California Revenue", "California AOV"). Tooltips rewrite per scope. Top City card respects `drillLoading` (not `loading`) since it depends on the drill-down fetch.
+- **Revenue/AOV toggle on leaderboard** (`Leaderboard.jsx`): new `MetricToggle` segmented control in the card header (US view) and alongside the Cities/Zip Codes tabs (state view). Re-sorts the list by the selected metric via `sortByMetric()`, swaps the primary dollar value in each row, and rescales the progress bar against the new max. `LeaderboardRow` signature changed from `revenue`/`maxRevenue` to `primaryValue`/`barMax` so it's metric-agnostic. Order count stays as secondary subtext in both modes.
+- **Zip AOV computed client-side**: `get_geo_revenue_by_zip` RPC does NOT return `avg_order_value` (unlike `_by_state` and `_by_city` which do). `computeAov(row)` helper falls back to `revenue / order_count` when `avg_order_value` is null. State and city rows still use the DB-computed value.
+- **All states shown in leaderboard**: removed `.slice(0, 25)` cap on `sortedStates`. All 50+ states (incl. DC, PR, etc.) render; `max-h-[500px] overflow-y-auto` scroll container handles overflow. Header copy changed from "Top States by Revenue" → "States by Revenue/AOV". Cities/zips keep the `.slice(0, 50)` cap (RPCs already cap at 200; 50 is plenty for UI).
+- **AOV card removed then restored**: brief detour where AOV KPI card was removed (3-column grid) before the user asked for it back. Grid returned to `grid-cols-2 xl:grid-cols-4`. Lesson: don't rush to delete metrics users may still want as secondary context.
 
 **Active data filters:**
 - **Miami exclusion**: All 5 RPCs exclude Miami orders from 2026-03-26 onward. Temporary filter, remove when user says so. Applied via migration `exclude_miami_orders_from_march_26` (then adjusted to 24th, then reverted to 26th via `revert_miami_exclusion_to_march_26`).
@@ -42,6 +39,20 @@
 - The orders table has NO `order_status` column, so canceled orders cannot be filtered out. The ~$40K gap vs PATH's ecomm_daily_sales (which nets cancellations) is expected.
 - Negative revenue rows exist (12 rows, -$6.5K) representing returns. These reduce the total slightly.
 - 40,983 rows have $0 net_product_revenue (possible cancellations) but don't affect revenue sums.
+- **`get_geo_revenue_by_zip` returns 5 columns, not 6**: `zip, city, state, revenue, order_count` — no `avg_order_value`. State/city RPCs return AOV; zip RPC doesn't. Compute client-side when needed.
+
+---
+
+## What was done (2026-04-10 evening) — prior session:
+
+- **Data Sources page added** (`DataHealth.jsx`): Admin-only page showing pipeline health for the `orders` table. Uses shared `get_data_freshness()` and `get_data_quality()` RPCs from Supabase. Summary banner shows overall health status. Source card shows freshness (Current/Behind/Stale), quality indicator (yesterday vs 7-day avg), sync schedule, row count. Matches CORE/PAIR/PATH pattern exactly.
+- **Admin auth implemented**: `ADMIN` password now sets `isAdmin` state (read from `role` field in localStorage `grid-auth` JSON). Data Sources footer button only appears for admin logins. BEBOLD users see no Data Sources access.
+- **Navigation wiring**: `currentPage` state switches between `'heatmap'` and `'data-health'`. Sidebar `footerContent` prop passes admin-only Data Sources button (Database icon). Header bar title updates dynamically per page.
+- **Logo updated**: Replaced with higher-resolution version (899x875 source, saved as 512x512). White background removed via Python flood-fill (Pillow). Transparent PNG blends cleanly with dark sidebar.
+- **Sidebar logo sizing**: Reduced from `w-16 h-16` (64px) to `w-10 h-10` (40px) in SidebarHeader.jsx. Previous size was too large and crowded the header area.
+- **Header bar redesigned to match PATH**: Changed from `h-12` with `text-sm` to `h-14` with `text-xl font-bold`. Gradient updated from `from-purple-800 via-purple-700 to-indigo-800` to `from-slate-800 via-purple-800 to-blue-800` (matching PATH's PageHeader gradient variant). Added `border-b border-slate-600/50`. Removed icon prefixes on page titles (just bold text now).
+- **"Analytics" section label removed** from sidebar navigation. Only "US Heat Map" nav item remains (cleaner look).
+- **InfoTip spacing improved**: Icon margin increased from `ml-1` to `ml-2`, icon size from `w-3 h-3` to `w-3.5 h-3.5`. Less cramped next to the bold header title.
 
 ---
 
@@ -96,8 +107,8 @@ Deploy: Push to GitHub main branch. Vercel auto-deploys.
 |------|---------|-------|
 | `src/App.jsx` | Main component, state orchestration | Auth, date range, data fetching, drill-down, page routing |
 | `src/components/GeoMap.jsx` | Choropleth map + city bubbles | d3-geo auto-zoom, log color scale |
-| `src/components/KPICards.jsx` | 4 metric cards | Matches PATH StatCard pattern, color-matched tooltips |
-| `src/components/Leaderboard.jsx` | Ranked list (states or cities/zips) | Tabbed in state view, amber tooltip |
+| `src/components/KPICards.jsx` | 4 metric cards (Revenue, Orders, AOV, Top State/City) | Drill-aware: reads from selected state's row when drilled in. Top State → Top City in state view. Takes `selectedState`, `stateData`, `cityData`, `drillLoading`. |
+| `src/components/Leaderboard.jsx` | Ranked list (states or cities/zips) | Revenue/AOV metric toggle in header. Re-sorts by chosen metric. Renders all states (no top-25 cap). Cities/zips still sliced to 50. Zip AOV computed client-side. |
 | `src/components/TopCitiesChart.jsx` | Top 50 cities bar chart | Revenue-intensity coloring, purple tooltip |
 | `src/components/DataHealth.jsx` | Data Sources page (admin-only) | Pipeline freshness/quality for orders table |
 | `src/components/InfoTip.jsx` | Portal-based info tooltips | Color-matched accent bar, ml-2 spacing, w-3.5 icon |
@@ -263,6 +274,20 @@ VITE_SUPABASE_ANON_KEY=[JWT token]
 
 ## Mistakes & Learnings
 
+### 2026-04-15 - KPI cards stayed static when drilling into a state
+**What happened:** After the drill-down work was deployed, the KPI grid kept showing US totals even when a state was selected. The header and map/leaderboard updated, but Revenue/Orders/AOV/Top State cards didn't. Cards only took `totals` and `topState` props, both computed from the US-level fetch.
+**Correct approach:** Pass `selectedState`, `stateData`, `cityData`, `drillLoading` into KPICards. Derive selected state's row from `stateData.find(r => r.state === selectedState)`. Swap "Top State" for "Top City" card (sourced from `cityData[0]`) when drilled in. Use `drillLoading` (not the US-level `loading`) for the Top City card since it depends on the state-scoped fetch.
+**Key lesson:** When adding drill-down to an app, audit EVERY component that shows data, not just the ones you're actively changing. KPI cards are easy to miss because they don't have obvious "state" dependencies in the data layer — they just consume totals.
+
+### 2026-04-15 - Removed a metric, user wanted it back within the hour
+**What happened:** Earlier in the session, removed the AOV KPI card per user request, then the user asked for it back as the session progressed. Grid went 4 → 3 → 4 cols.
+**Correct approach:** When a user says "remove X," the instinct to also clean up imports and grid dimensions is right, but favor reversible changes. Deleting the card entirely (vs. hiding or commenting) made restoration a full reimplementation. For metric toggles or UI-level removals, consider making them configurable before ripping out the code.
+
+### 2026-04-15 - get_geo_revenue_by_zip RPC doesn't return avg_order_value
+**What happened:** Added a Revenue/AOV toggle to the leaderboard. State and city rows worked immediately. Zip rows were missing AOV because the zip RPC returns `zip, city, state, revenue, order_count` — no `avg_order_value` column. State and city RPCs return it; zip doesn't.
+**Correct approach:** Added `computeAov(row)` helper that falls back to `revenue / order_count` when `avg_order_value` is null. Could alternatively add AOV to the zip RPC via migration, but client-side compute is fine for this volume and avoids a schema change.
+**Key lesson:** Never assume RPC return shapes are consistent across a family of functions. Always check the CLAUDE.md RPC table (or the migration) to see what each one actually returns. Document schema asymmetries explicitly.
+
 ### 2026-04-10 - SidebarHeader logo was too large (64px)
 **What happened:** New high-res logo at `w-16 h-16` (64px) crowded the sidebar header, making the app name and tagline feel cramped.
 **Correct approach:** Reduced to `w-10 h-10` (40px) with `rounded-lg` to match the fallback icon size. The sidebar header has limited vertical space, logos over 40px crowd the text.
@@ -321,6 +346,9 @@ VITE_SUPABASE_ANON_KEY=[JWT token]
 - **localStorage not sessionStorage**: GRID uses localStorage for auth (unique among PopSockets apps). JSON stores `{ authenticated, role, timestamp }` under key `grid-auth`. Admin state derived from `role === 'admin'`.
 - **No section labels in sidebar nav**: The "Analytics" label was removed. Just list nav items directly.
 - **Data Sources is admin-only**: Passed via `footerContent` prop to Sidebar, gated by `isAdmin`. Not in the main nav items array.
+- **KPI cards are drill-aware**: Pass `selectedState`, `stateData`, `cityData`, `drillLoading` to `KPICards` along with `totals`. When `selectedState` is set, cards read from the selected state's row in `stateData` instead of `totals`. "Top State" card becomes "Top City" sourced from `cityData[0]`. Adding a new KPI card? Decide whether it should reflect the scope or stay US-level and branch on `isStateView`.
+- **Leaderboard metric toggle**: `Leaderboard` has a Revenue/AOV segmented control that re-sorts and rescales bars. `LeaderboardRow` takes `primaryValue` + `barMax` (not `revenue` + `maxRevenue`). Use the `computeAov(row)` helper — it handles the fact that `get_geo_revenue_by_zip` doesn't return `avg_order_value` and falls back to `revenue / order_count`.
+- **No top-N cap on states**: `sortedStates.map(...)` (no `.slice(0, 25)`). The `max-h-[500px] overflow-y-auto` container handles scrolling. Cities and zips are still capped to 50 rows (RPCs cap at 200 server-side).
 
 ## Security Audit (2026-04-09)
 
