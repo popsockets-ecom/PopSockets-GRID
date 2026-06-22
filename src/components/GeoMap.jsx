@@ -260,7 +260,7 @@ export function GeoMap({ stateData = [], cityData = [], onStateClick, selectedSt
             </div>
           ) : (
             <span className="text-xs text-purple-300 font-semibold">
-              {STATE_ABBR_TO_NAME[selectedState]} — {cityBubbles.length} cities mapped
+              {STATE_ABBR_TO_NAME[selectedState]} - {cityBubbles.length} cities mapped
             </span>
           )}
         </div>
