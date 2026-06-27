@@ -13,11 +13,20 @@
 
 ---
 
-## Current State (Last Updated: 2026-04-15)
+## Current State (Last Updated: 2026-06-27)
 
-**Working on:** Session complete. Drill-aware KPI cards, Revenue/AOV toggle on leaderboard, all-states rendering.
+**Working on:** Session complete. **App renamed: the D in GRID changed from "Dashboard" to "Detector," and "Insights" → "Intelligence."** Full name is now **Geographic Revenue Intelligence Detector** (was "Geographic Revenue Insights Dashboard"). Intent: the name should read as an active tool that surfaces signals, not a static report. Acronym GRID unchanged — only what the letters stand for changed.
 **Branch:** main
-**Status:** Live at https://popsockets-grid.vercel.app. Last commit `1581e63`.
+**Status:** Live at https://popsockets-grid.vercel.app. Rename pushed to GRID `main` + PIT `main` (Vercel auto-deploys both).
+**What was done (2026-06-27 — rename):**
+- Swept "Geographic Revenue Insights Dashboard" → "Geographic Revenue Intelligence Detector" across every placement:
+  - **GRID** `index.html` tab title, `src/App.jsx` taglines (×2), this CLAUDE.md H1.
+  - **PIT** launcher `index.html` GRID tile tag, PIT CLAUDE.md app-registry row.
+  - **PopSockets root CLAUDE.md** app-registry row.
+  - **PATH** CLAUDE.md (×2 references to GRID's full name) + `src/components/geo/UsHeatMap.jsx` port comment (US Heat Map is GRID's view lifted into PATH).
+- The app-facing changes (GRID tab title + taglines, PIT tile tag) need the Vercel rebuild to show; hard-refresh PIT if the tile still reads the old tagline.
+- No functional/logic changes — pure naming. Verified no `Revenue Insights` / `Insights Dashboard` strings remain in GRID or PIT source.
+
 **Next steps:**
 - [ ] Investigate Snowflake orders table for `order_status` column to exclude cancellations
 - [ ] DMA mapping (requires 43K-row zip-to-DMA lookup table)
