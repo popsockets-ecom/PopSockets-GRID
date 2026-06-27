@@ -1,4 +1,4 @@
-# GRID - Geographic Revenue Insights Dashboard
+# GRID - Geographic Revenue Intelligence Detector
 
 > **This file is Claude's memory for GRID.** Update it as you work, not just at commit time.
 

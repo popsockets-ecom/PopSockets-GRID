@@ -179,7 +179,7 @@ function App() {
     return (
       <LoginPage
         appName="GRID"
-        tagline="Geographic Revenue Insights Dashboard"
+        tagline="Geographic Revenue Intelligence Detector"
         logoSrc="/logo.png"
         onSubmit={handleLogin}
         error={authError}
@@ -193,7 +193,7 @@ function App() {
     <div className="min-h-screen bg-slate-900 text-white">
       <Sidebar
         appName="GRID"
-        tagline="Geographic Revenue Insights Dashboard"
+        tagline="Geographic Revenue Intelligence Detector"
         logoSrc="/logo.png"
         navigationItems={navigationItems}
         activeItem={currentPage}
