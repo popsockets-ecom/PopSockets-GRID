@@ -30,7 +30,7 @@
 **Next steps:**
 - [ ] Investigate Snowflake orders table for `order_status` column to exclude cancellations
 - [ ] DMA mapping (requires 43K-row zip-to-DMA lookup table)
-- [ ] Rotate 3 exposed API keys (OpenAI in CAGE, Anthropic in TARA, Supabase service role in TARA)
+- [ ] Rotate exposed API keys: OpenAI in CAGE, and the shared Supabase service role key (was in TARA's .env). TARA was deleted entirely 2026-07-25 so its .env is gone, but the service role key is shared platform-wide and still needs rotating; the Anthropic key that lived there is moot unless it was reused elsewhere.
 - [ ] Remove Miami exclusion when instructed by user
 
 **What was done (2026-04-14 → 2026-04-15):**
@@ -364,5 +364,5 @@ VITE_SUPABASE_ANON_KEY=[JWT token]
 Cross-app API key audit findings:
 - **GRID is clean** — uses `.env` with Supabase anon key only (publishable, fine for frontend)
 - **Never commit .env files with real secrets** — use `.env.example` pattern (GRID already does this correctly)
-- **3 keys to rotate across other repos**: OpenAI (CAGE), Anthropic (TARA), Supabase service role (TARA)
+- **Keys to rotate across other repos**: OpenAI (CAGE), Supabase service role (was in TARA's .env; TARA deleted 2026-07-25 but the key is shared platform-wide, so this one still stands). The Anthropic key in TARA died with the repo.
 - **Supabase anon keys in frontend are fine** — they're publishable by design, RLS protects data
