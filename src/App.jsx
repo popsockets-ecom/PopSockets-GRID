@@ -18,7 +18,7 @@ import {
   fetchTopCities,
   STATE_ABBR_TO_NAME,
 } from './services/geoDataService.js';
-import { fetchPitPasswords, getFallbackPitPasswords } from './lib/pitPasswords.js';
+import { verifyPitLogin } from './lib/pitPasswords.js';
 
 function getDefaultDates() {
   const mtOffset = 7 * 60 * 60 * 1000;
@@ -33,15 +33,6 @@ function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [authError, setAuthError] = useState('');
-  const [pitPasswords, setPitPasswords] = useState(() => getFallbackPitPasswords());
-
-  useEffect(() => {
-    let cancelled = false;
-    fetchPitPasswords().then((rows) => {
-      if (!cancelled) setPitPasswords(rows);
-    });
-    return () => { cancelled = true; };
-  }, []);
 
   // Date range
   const [dateRange, setDateRange] = useState(getDefaultDates);
@@ -74,9 +65,12 @@ function App() {
     } catch { /* ignore */ }
   }, []);
 
-  const handleLogin = (password) => {
-    const match = pitPasswords.find((p) => p.password === password.toUpperCase());
-    const role = match?.role;
+  const handleLogin = async (password) => {
+    // Verified server-side - GRID no longer holds any credential. The
+    // toUpperCase() is preserved because GRID's stored passwords are uppercase
+    // and users have always been able to type them in any case.
+    const result = await verifyPitLogin(password.toUpperCase());
+    const role = result?.success ? result.identity?.role : null;
     if (role) {
       localStorage.setItem('grid-auth', JSON.stringify({ authenticated: true, role, timestamp: Date.now() }));
       setIsAuthenticated(true);

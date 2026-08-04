@@ -6,25 +6,32 @@ const PIT_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsIn
 const pit = createClient(PIT_URL, PIT_KEY);
 const APP_NAME = 'GRID';
 
-const FALLBACK = [
-  { password: 'BEBOLD', role: 'user',  label: 'User' },
-  { password: 'ADMIN',  role: 'admin', label: 'Admin' },
-];
+// ── Login (verified SERVER-SIDE, 2026-08-04) ─────────────────────────────────
+//
+// This module used to call get_app_passwords, which returned every PIT password
+// in plaintext, and the app compared the typed one in the browser. That RPC is
+// SECURITY DEFINER and was granted to anon, and the anon key above ships in the
+// bundle - so anyone could read all 100 credentials across 18 apps. The
+// hardcoded FALLBACK array published a second copy of GRID's two.
+//
+// pit_login does the comparison in the database and returns only a role.
+// Never reintroduce a function that returns password values to the browser.
 
-export function getFallbackPitPasswords() {
-  return FALLBACK;
-}
-
-export async function fetchPitPasswords() {
+/**
+ * @returns {Promise<{success: boolean, identity?: {role: string, label: string}, error?: string}>}
+ */
+export async function verifyPitLogin(password) {
   try {
-    const { data, error } = await pit.rpc('get_app_passwords', { p_app_name: APP_NAME });
-    if (error || !Array.isArray(data) || data.length === 0) {
-      if (error) console.warn('[pitPasswords] RPC error, using fallback:', error.message);
-      return FALLBACK;
+    const { data, error } = await pit.rpc('pit_login', {
+      p_app_name: APP_NAME, p_email: null, p_password: password,
+    });
+    if (error) {
+      console.warn('[pitPasswords] pit_login error:', error.message);
+      return { success: false, error: error.message };
     }
-    return data;
+    return data || { success: false, error: 'no response' };
   } catch (err) {
-    console.warn('[pitPasswords] RPC threw, using fallback:', err);
-    return FALLBACK;
+    console.warn('[pitPasswords] pit_login threw:', err);
+    return { success: false, error: err.message || 'unknown error' };
   }
 }
